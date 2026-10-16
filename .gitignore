@@ -1,0 +1,18 @@
+# Made by ./build_linux.sh: rebuild rather than store
+build/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor settings (PyCharm)
+.idea/
+
+# Leftovers from saving or exporting while trying things out
+*.bak
+*.tmp
+*.cxml
+*.cxml.deleted

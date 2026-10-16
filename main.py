@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Start the program:
 
     python main.py                   (lists the competitions in ~/.pyraceresults)

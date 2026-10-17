@@ -110,10 +110,10 @@ class CompetitionWindow(tk.Toplevel):
         clubs = ", ".join(competition.clubs) or "any club"
         counted = (f"best {competition.race_count} races count" if competition.race_count
                    else "every race counts")
-        self.path_var.set(f"{', '.join(competition.classes)} · {clubs} · {counted}\n{session.path}")
+        self.path_var.set(f"{', '.join(session.class_names)} · {clubs} · {counted}\n{session.path}")
         self.days_frame.configure(text=f"Race days ({len(days)} of {MAX_RACE_DAYS})")
         for day in days:
-            self.listbox.insert(tk.END, f"{day.name} ({day.boat_class})" if day.boat_class else day.name)
+            self.listbox.insert(tk.END, day.name)
         if days and select is not None:
             index = min(max(select, 0), len(days) - 1)
             self.listbox.selection_set(index)
@@ -154,8 +154,7 @@ class CompetitionWindow(tk.Toplevel):
             tree.column(column_id, width=110, anchor="w")
         for number, row in enumerate(day.rows, start=1):
             tree.insert("", "end", values=[number, *row])
-        classes = ", ".join(self.session.competition.day_classes(day))
-        self.preview_frame.configure(text=f"{day.name} ({classes})")
+        self.preview_frame.configure(text=f"{day.name} ({', '.join(self.session.class_names)})")
 
     # -- race days --------------------------------------------------------------------------
 
@@ -207,12 +206,13 @@ class CompetitionWindow(tk.Toplevel):
         except StorageError:
             members = None                 # still show the results, just without names
         competition = self.session.competition
-        ResultsWindow(self, competition_results(competition, members), competition.title)
+        results = competition_results(competition, members, self.session.class_names)
+        ResultsWindow(self, results, competition.title)
 
     def _race_day_options(self) -> dict:
         """The competition's classes and clubs, and where the race day window's Export HTML writes."""
         competition = self.session.competition
-        return {"classes": competition.classes, "clubs": competition.clubs,
+        return {"classes": self.session.class_names, "clubs": competition.clubs,
                 "html_folder": self.settings.output_dir / competition.directory,
                 "competition_title": competition.title, "club_title": self.settings.title}
 

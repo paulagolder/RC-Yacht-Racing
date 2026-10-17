@@ -1,4 +1,8 @@
-"""session.py - an open competition file.
+"""session.py - an open competition file, and the boat classes it is read with.
+
+When a file is opened its classes are normalised to class ids (keys in yachtclasses.xml), so
+a file written as classes="Victoria,DF65" is treated as ["df65", "victoria"]. A class that is
+not in yachtclasses.xml is kept as it is.
 
 Every change is saved to the file straight away ("after editing the competition file is
 updated"). If a change cannot be saved, or is invalid, it is undone in memory as well and the
@@ -9,6 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ..model.boat_class import DEFAULT_BOAT_CLASSES, BoatClassList
 from ..model.competition import Competition
 from ..model.race_day import RaceDay
 from ..storage.competition_store import load_competition, save_competition
@@ -16,22 +21,33 @@ from ..storage.errors import StorageError
 
 
 class CompetitionSession:
-    def __init__(self, competition: Competition, path):
+    def __init__(self, competition: Competition, path, boat_classes: BoatClassList | None = None):
         self.competition = competition
         self.path = Path(path)
+        self.boat_classes = boat_classes or BoatClassList(DEFAULT_BOAT_CLASSES)
+        try:
+            competition.classes = self.boat_classes.normalise(competition.classes)
+        except ValueError:
+            pass                    # a class that is not in yachtclasses.xml: leave them as written
+
+    @property
+    def class_names(self) -> list[str]:
+        """The competition's classes by their full names, for the screen and for finding sailors."""
+        return self.boat_classes.display_names(self.competition.classes)
 
     # -- opening and creating -------------------------------------------------------------
 
     @classmethod
-    def open(cls, path) -> CompetitionSession:
+    def open(cls, path, boat_classes: BoatClassList | None = None) -> CompetitionSession:
         """Open an existing competition file. Raises StorageError."""
-        return cls(load_competition(path), path)
+        return cls(load_competition(path), path, boat_classes)
 
     @classmethod
-    def create(cls, competition: Competition, path) -> CompetitionSession:
+    def create(cls, competition: Competition, path,
+               boat_classes: BoatClassList | None = None) -> CompetitionSession:
         """Write a new competition file and open it. Raises StorageError."""
         save_competition(competition, path)
-        return cls(competition, path)
+        return cls(competition, path, boat_classes)
 
     # -- changes (each one is saved immediately) -----------------------------------------
 

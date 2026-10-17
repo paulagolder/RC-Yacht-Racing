@@ -44,9 +44,6 @@ DEFAULT_BOAT_CLASSES = [
     BoatClass("victoria", "Victoria", "Va", "*"),
 ]
 
-# Suggestions for the class boxes on screen when yachtclasses.xml cannot be read.
-BOAT_CLASSES = [c.fullname for c in DEFAULT_BOAT_CLASSES]
-
 
 class BoatClassList:
     def __init__(self, classes: list[BoatClass] | None = None):
@@ -64,6 +61,25 @@ class BoatClassList:
         wanted = class_key(name)
         return next((c for c in self.classes
                      if wanted in (class_key(c.key), class_key(c.fullname))), None)
+
+    def normalise(self, names: list[str]) -> list[str]:
+        """The class ids (keys) for these keys or full names: no repeats, in this list's order.
+
+        ['Victoria', 'df 65', 'DF65'] -> ['df65', 'victoria']. Raises ValueError naming any
+        that are not one of the classes.
+        """
+        names = [n for n in (str(n).strip() for n in names) if n]
+        unknown = [n for n in names if self.find(n) is None]
+        if unknown:
+            raise ValueError(f"Unknown boat class{'es' if len(unknown) > 1 else ''}: "
+                             f"{', '.join(unknown)}. The classes are {', '.join(self.names())} "
+                             "(change them with File > Boat classes).")
+        wanted = {self.find(n).key for n in names}
+        return [c.key for c in self.classes if c.key in wanted]
+
+    def display_names(self, ids: list[str]) -> list[str]:
+        """The full names for these class ids, for showing on screen (unknown ones as given)."""
+        return [c.fullname if (c := self.find(i)) else i for i in ids]
 
     # -- changing ---------------------------------------------------------------------------
 

@@ -17,7 +17,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from ..model.boat_class import BOAT_CLASSES, DEFAULT_BOAT_CLASSES, BoatClass, BoatClassList
+from ..model.boat_class import DEFAULT_BOAT_CLASSES, BoatClass, BoatClassList
 from .errors import StorageError
 from .xml_file import write_xml
 
@@ -71,9 +71,11 @@ def load_boat_classes(data_dir) -> BoatClassList:
     return boat_classes_from_xml(root)
 
 
-def boat_class_names(data_dir) -> list[str]:
-    """The class names for the class boxes on screen. Never raises: falls back to the defaults."""
+def boat_classes_or_defaults(data_dir) -> BoatClassList:
+    """The classes in yachtclasses.xml. Never raises: if it cannot be read (or is empty), the
+    default classes."""
     try:
-        return load_boat_classes(data_dir).names() or list(BOAT_CLASSES)
+        classes = load_boat_classes(data_dir)
     except StorageError:
-        return list(BOAT_CLASSES)
+        classes = BoatClassList()
+    return classes if len(classes) else BoatClassList(DEFAULT_BOAT_CLASSES)

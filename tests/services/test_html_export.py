@@ -10,11 +10,11 @@ from app.services.html_export import export_race_day_html, race_day_filename, ra
 
 MEMBERS = MemberList([Sailor("   03", "DF95", "Rosie", "Keel", "RMBC")])
 PAGE = dict(club_title="RMBC <club>", competition_title="DF95 2026", members=MEMBERS,
-            clubs=["RMBC"], generated=datetime.datetime(2026, 10, 16, 19, 45))
+            classes=["DF95"], clubs=["RMBC"], generated=datetime.datetime(2026, 10, 16, 19, 45))
 
 
-def day(name: str, rows, boat_class: str = "DF95") -> RaceDay:
-    return RaceDay.from_table(name, ["Race A", "Race B"], rows, boat_class)
+def day(name: str, rows) -> RaceDay:
+    return RaceDay.from_table(name, ["Race A", "Race B"], rows)
 
 
 class HtmlExportTests(unittest.TestCase):
@@ -33,11 +33,11 @@ class HtmlExportTests(unittest.TestCase):
         self.assertIn('<td><span class="sail">99</span></td>', page)   # unknown: no name
         self.assertIn('<tr><td class="row">2</td>', page)
 
-    def test_names_use_the_days_classes_and_the_clubs(self):
-        self.assertNotIn("Rosie Keel", race_day_html(day("d", [["3"]], "IOM"), **PAGE))
-        open_day = race_day_html(day("d", [["3"]], ""), **PAGE, classes=["IOM", "DF95"])
-        self.assertIn("Rosie Keel", open_day)
-        self.assertIn("<h2>d &middot; IOM, DF95</h2>", open_day)
+    def test_names_use_the_competitions_classes_and_clubs(self):
+        self.assertNotIn("Rosie Keel", race_day_html(day("d", [["3"]]), **{**PAGE, "classes": ["IOM"]}))
+        both = race_day_html(day("d", [["3"]]), **{**PAGE, "classes": ["IOM", "DF95"]})
+        self.assertIn("Rosie Keel", both)
+        self.assertIn("<h2>d &middot; IOM, DF95</h2>", both)
         page = race_day_html(day("d", [["3", "3"]]), **{**PAGE, "clubs": ["Other"]})
         self.assertNotIn("Rosie Keel", page)
 

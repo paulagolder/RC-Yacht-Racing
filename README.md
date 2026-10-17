@@ -5,8 +5,11 @@ Enter and edit race results for radio-controlled model sailing yachts.
 - A **competition** has a name, a year, one or more boat classes and the clubs whose sailors may race,
   and lives in one XML file. It holds up to **15 race days**.
 - A **race day** is a small table: up to **6 races (columns, Race A, Race B ...) and 15 rows**.
-- A race day can be for one of the competition's classes, or (by default) open to all of them.
-  Each cell is a **sail number**, which must belong to a sailor in the race day's classes from one
+- A competition's classes are typed as a list separated by commas ("DF65, Victoria"); each must be
+  one of the classes in `yachtclasses.xml`, typed by its key or full name in any case. They are
+  stored as class ids without repeats (`classes="df65,victoria"`).
+- Every race day is open to all the competition's classes, and shows them but cannot change them.
+  Each cell is a **sail number**, which must belong to a sailor in one of those classes from one
   of the competition's clubs.
 
 ## The data folder
@@ -23,8 +26,9 @@ Everything lives in `~/.pyraceresults` (created on first run):
   per class. Edit it with the **File > Boat classes...** menu, then click Save.
 
 The first window lists every competition in the data folder. Double-click one (or select it and click
-**Open**) to open it in its own window, or click **New competition**. **Details...** changes its name,
-year, classes, clubs, races counted or HTML folder (the file is renamed to match the name);
+**Open**) to open it in its own window. **Edit...** changes its name,
+year, classes, clubs, races counted or HTML folder (the file is renamed to match the name); **New...**
+starts a new competition;
 **Delete** takes it off the list (the file is kept as `.cxml.deleted`, rename it back to restore it). In a competition's window, pick a
 race day and click **Edit** (or double-click it). Saving the race day window writes the competition file
 straight away.
@@ -93,7 +97,7 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             html_export.py      a race day as a web page
         ui/                     the windows
             front_window.py     the first window: the list of competitions
-            competition_dialog.py  asks for a competition's details (New and Details)
+            competition_dialog.py  asks for a competition's details (New and Edit)
             competition_window.py  one competition: its race days and a preview
             race_day_window.py  enter or edit one race day's table
             grid_navigation.py  where Enter/Tab moves to in that table

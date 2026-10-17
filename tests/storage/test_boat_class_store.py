@@ -5,7 +5,7 @@ from pathlib import Path
 from app.model.boat_class import DEFAULT_BOAT_CLASSES, BoatClass, BoatClassList
 from app.storage.boat_class_store import (
     BOAT_CLASSES_FILE,
-    boat_class_names,
+    boat_classes_or_defaults,
     load_boat_classes,
     save_boat_classes,
 )
@@ -38,6 +38,15 @@ class BoatClassListTests(unittest.TestCase):
         classes.replace(2, BoatClass("df95", "DF95", "95", "%"))    # itself is not a duplicate
         self.assertEqual(classes.classes[2].symbol, "%")
 
+    def test_normalise_to_ids_in_file_order(self):
+        classes = BoatClassList(DEFAULT_BOAT_CLASSES)
+        self.assertEqual(classes.normalise(["Victoria", " df 65", "DF65", ""]),
+                         ["df65", "victoria"])
+        self.assertEqual(classes.display_names(["df65", "victoria", "IOM"]), ["DF65", "Victoria", "IOM"])
+        with self.assertRaises(ValueError) as ctx:
+            classes.normalise(["DF65", "IOM", "Marblehead"])
+        self.assertIn("IOM, Marblehead", str(ctx.exception))
+
 
 class BoatClassesFileTests(unittest.TestCase):
     def setUp(self):
@@ -69,7 +78,7 @@ class BoatClassesFileTests(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
             with self.assertRaises(StorageError):
                 load_boat_classes(self.dir)
-        self.assertEqual(boat_class_names(self.dir), ["DF65", "RG65", "DF95", "Victoria"])
+        self.assertEqual(boat_classes_or_defaults(self.dir).names(), ["DF65", "RG65", "DF95", "Victoria"])
 
 
 if __name__ == "__main__":

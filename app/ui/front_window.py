@@ -1,9 +1,8 @@
 """front_window.py - the first window: every competition in the data folder.
 
 Competition files (*.cxml) in ~/.pyraceresults are listed here. Double-click one (or select it
-and click Open) to open it in its own window; New competition creates a file in the folder.
-Details changes a competition's name, classes, clubs and so on (and its file name to match the
-name). Delete takes it off the list by renaming the file to .cxml.deleted, so it can be brought
+and click Open) to open it in its own window. Edit changes a competition's name, classes, clubs
+and so on (and its file name to match the name); New creates a file in the folder. Delete takes it off the list by renaming the file to .cxml.deleted, so it can be brought
 back.
 """
 
@@ -21,7 +20,7 @@ from ..storage.competition_store import (
     suggested_filename,
     update_competition_details,
 )
-from ..storage.boat_class_store import boat_class_names
+from ..storage.boat_class_store import boat_classes_or_defaults
 from ..storage.errors import StorageError
 from ..storage.settings_store import LOGO_FILE, load_settings
 from .boat_classes_window import BoatClassesWindow
@@ -89,10 +88,9 @@ class FrontWindow(tk.Tk):
         buttons.pack(side="bottom", fill="x")
         self.open_button = ttk.Button(buttons, text="Open", command=self.open_selected)
         self.open_button.pack(side="left", padx=2)
-        ttk.Button(buttons, text="New competition...", command=self.new_competition).pack(
-            side="left", padx=2)
-        self.details_button = ttk.Button(buttons, text="Details...", command=self.edit_details)
-        self.details_button.pack(side="left", padx=2)
+        self.edit_button = ttk.Button(buttons, text="Edit...", command=self.edit_details)
+        self.edit_button.pack(side="left", padx=2)
+        ttk.Button(buttons, text="New...", command=self.new_competition).pack(side="left", padx=2)
         self.delete_button = ttk.Button(buttons, text="Delete", command=self.delete_selected)
         self.delete_button.pack(side="left", padx=2)
         ttk.Button(buttons, text="Refresh", command=self.refresh).pack(side="left", padx=2)
@@ -130,11 +128,13 @@ class FrontWindow(tk.Tk):
             select = self._paths[index] if index is not None else None
         self.tree.delete(*self.tree.get_children())
         self._paths = []
+        boat_classes = boat_classes_or_defaults(self.settings.data_dir)
         for path, competition, error in list_competitions(self.settings.data_dir):
             if competition is None:
                 values = ("(cannot be read)", "", "", "", path.name)
             else:
-                values = (competition.title, ", ".join(competition.classes), competition.year,
+                classes = boat_classes.display_names(competition.classes)
+                values = (competition.title, ", ".join(classes), competition.year,
                           len(competition.race_days), path.name)
             item = self.tree.insert("", "end", values=values)
             self._paths.append(path)
@@ -142,7 +142,7 @@ class FrontWindow(tk.Tk):
                 self.tree.selection_set(item)
                 self.tree.see(item)
         if not self._paths:
-            self.status_var.set("No competitions yet. Click New competition to start one.")
+            self.status_var.set("No competitions yet. Click New to start one.")
         self._selection_changed()
 
     def _selected_index(self) -> int | None:
@@ -151,7 +151,7 @@ class FrontWindow(tk.Tk):
 
     def _selection_changed(self) -> None:
         index = self._selected_index()
-        for button in (self.open_button, self.details_button, self.delete_button):
+        for button in (self.open_button, self.edit_button, self.delete_button):
             button.state(["!disabled" if index is not None else "disabled"])
         if index is not None:
             self.status_var.set("Click Open (or double-click) to see its race days.")
@@ -175,7 +175,7 @@ class FrontWindow(tk.Tk):
             window.focus_set()
             return
         try:
-            session = CompetitionSession.open(path)
+            session = CompetitionSession.open(path, boat_classes_or_defaults(self.settings.data_dir))
         except StorageError as exc:
             messagebox.showerror("Cannot open file", str(exc), parent=self)
             return
@@ -188,8 +188,8 @@ class FrontWindow(tk.Tk):
             self.refresh()                # race day counts may have changed
 
     def new_competition(self) -> None:
-        class_names = boat_class_names(self.settings.data_dir)
-        competition = CompetitionDialog(self, class_names=class_names).show()
+        boat_classes = boat_classes_or_defaults(self.settings.data_dir)
+        competition = CompetitionDialog(self, boat_classes=boat_classes).show()
         if competition is None:
             return
         path = self.settings.data_dir / suggested_filename(competition)
@@ -200,7 +200,7 @@ class FrontWindow(tk.Tk):
             self.refresh(select=path)
             return
         try:
-            CompetitionSession.create(competition, path)
+            CompetitionSession.create(competition, path, boat_classes)
         except StorageError as exc:
             messagebox.showerror("Cannot create file", str(exc), parent=self)
             return
@@ -231,7 +231,7 @@ class FrontWindow(tk.Tk):
             messagebox.showerror(title, str(exc), parent=self)
             return
         details = CompetitionDialog(self, title=title, competition=competition,
-                                    class_names=boat_class_names(self.settings.data_dir)).show()
+                                    boat_classes=boat_classes_or_defaults(self.settings.data_dir)).show()
         if details is None or details.same_details(competition):
             return
         try:

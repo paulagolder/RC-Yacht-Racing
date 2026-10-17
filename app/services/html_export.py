@@ -3,7 +3,7 @@
     path = export_race_day_html(folder, race_day, club_title=..., competition_title=...,
                                 members=..., classes=..., clubs=...)
 
-classes are the classes that may sail in the race day (Competition.day_classes).
+classes are the competition's classes by their full names (CompetitionSession.class_names).
 
 The page is a single file (styles and club logo included), so it can be emailed, put on a
 website or printed as it is. Each sail number is shown with its sailor's name when known.
@@ -70,7 +70,7 @@ def race_day_html(race_day: RaceDay, *, club_title: str, competition_title: str,
     generated = generated or datetime.datetime.now()
     e = html.escape
     day_name = race_day.name
-    classes = [race_day.boat_class] if race_day.boat_class else list(classes or [])
+    classes = list(classes or [])
     subtitle = f"{e(day_name)} &middot; {e(', '.join(classes))}" if classes else e(day_name)
     head = "".join(f"<th>{e(name)}</th>" for name in race_day.columns)
     body = "\n".join(

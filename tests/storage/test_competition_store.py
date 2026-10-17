@@ -23,8 +23,8 @@ def simple(boat_class: str, year: int) -> Competition:
     return Competition(f"{boat_class} {year}", year, [boat_class])
 
 
-def table_day(name: str, columns, rows, boat_class: str = "DF95") -> RaceDay:
-    return RaceDay.from_table(name, columns, rows, boat_class)
+def table_day(name: str, columns, rows) -> RaceDay:
+    return RaceDay.from_table(name, columns, rows)
 
 
 def sample() -> Competition:
@@ -54,8 +54,7 @@ class StorageTests(unittest.TestCase):
 
     def test_round_trip_awkward_text(self):
         comp = simple("Vic & <Co>", 2026)
-        comp.add_race_day(table_day('Day "1" \'a\'', ["A"], [["  padded  "], ["a&b <c> é ü 日本"]],
-                                    "Vic & <Co>"))
+        comp.add_race_day(table_day('Day "1" \'a\'', ["A"], [["  padded  "], ["a&b <c> é ü 日本"]]))
         save_competition(comp, self.path)
         self.assertEqual(load_competition(self.path), comp)
 
@@ -117,13 +116,13 @@ class StorageTests(unittest.TestCase):
         comp = Competition("Victoria_df65_competition_2026", 2026, ["df65", "victoria"], ["RMBC"],
                            24, "Victoria2026")
         comp.add_race_day(RaceDay.from_table("Race day 1", ["Race A", "Race B"],
-                                             [["12", "7"], ["", ""], ["7", ""]], "df65"))
+                                             [["12", "7"], ["", ""], ["7", ""]]))
         comp.add_race_day(RaceDay("Race day 2", default_races(1)))
         save_competition(comp, self.path)
         text = self.path.read_text(encoding="utf-8")
         self.assertIn('<competition year="2026" name="Victoria_df65_competition_2026" racecount="24" '
                       'clubs="RMBC" directory="Victoria2026" classes="df65,victoria" version="3">', text)
-        self.assertIn('  <raceday name="Race day 1" class="df65">\n    <race name="Race A">\n'
+        self.assertIn('  <raceday name="Race day 1">\n    <race name="Race A">\n'
                       '      <sail>12</sail>\n      <sail />\n      <sail>7</sail>\n    </race>', text)
         self.assertIn('    <race name="Race B">\n      <sail>7</sail>\n    </race>', text)
         self.assertIn('  <raceday name="Race day 2">\n    <race name="Race A" />', text)
@@ -144,14 +143,9 @@ class StorageTests(unittest.TestCase):
                           comp.directory),
                          ("Victoria_df65_competition_2026", 2026, ["df65", "victoria"], ["RMBC"], 24,
                           "Victoria2026"))
-        self.assertEqual([d.boat_class for d in comp.race_days], ["victoria", ""])
-
-    def test_race_day_in_another_class_is_refused(self):
-        xml = ('<competition year="2026" name="x" classes="df65"><raceday name="d" class="IOM">'
-               '<race name="A"/></raceday></competition>')
-        with self.assertRaises(StorageError) as ctx:
-            load_competition(self.write(xml))
-        self.assertIn("IOM", str(ctx.exception))
+        self.assertEqual([d.name for d in comp.race_days], ["d", "e"])     # class="..." ignored
+        save_competition(comp, self.path)
+        self.assertNotIn("class=", self.path.read_text(encoding="utf-8").replace("classes=", ""))
 
     def test_empty_race_and_competition(self):
         comp = simple("DF95", 2026)
@@ -240,14 +234,12 @@ class StorageTests(unittest.TestCase):
         self.assertTrue(comp.same_details(details))
         self.assertEqual(len(comp.race_days), 2)
 
-    def test_new_details_refused_if_file_exists_or_races_do_not_fit(self):
+    def test_new_details_refused_if_file_exists(self):
         old = self.dir / "DF95_2026.cxml"
         save_competition(sample(), old)
         save_competition(simple("IOM", 2025), self.dir / "IOM_2025.cxml")
         with self.assertRaises(StorageError):
             update_competition_details(old, simple("IOM", 2025))
-        with self.assertRaises(StorageError):
-            update_competition_details(old, simple("Victoria", 2026))   # race day 1 is DF95
         self.assertEqual(len(load_competition(old).race_days), 2)      # untouched
         self.assertTrue(load_competition(old).same_details(simple("DF95", 2026)))
 

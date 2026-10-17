@@ -12,8 +12,8 @@ def comp(**changes) -> Competition:
     return Competition(**details)
 
 
-def day(name: str, boat_class: str = "") -> RaceDay:
-    return RaceDay(name, default_races(2), boat_class)
+def day(name: str) -> RaceDay:
+    return RaceDay(name, default_races(2))
 
 
 def add_days(competition: Competition, count: int) -> None:
@@ -60,28 +60,6 @@ class CompetitionTests(unittest.TestCase):
         self.assertTrue(comp().has_class("df 65"))
         self.assertFalse(comp().has_class("IOM"))
 
-    def test_race_day_class_must_be_one_of_the_competitions(self):
-        c = comp()
-        c.add_race_day(day("DF65 day", "df65"))
-        c.add_race_day(day("Open day"))
-        bad = day("IOM day", "IOM")
-        with self.assertRaises(ValueError):
-            c.add_race_day(bad)
-        with self.assertRaises(ValueError):
-            c.replace_race_day(0, bad)
-        self.assertEqual([d.name for d in c.race_days], ["DF65 day", "Open day"])
-        with self.assertRaises(ValueError):
-            comp(race_days=[bad])
-
-    def test_class_name(self):
-        self.assertEqual(comp().class_name("VICTORIA"), "Victoria")
-        self.assertEqual(comp().class_name("IOM"), "IOM")
-
-    def test_day_classes_inherit_the_competitions(self):
-        c = comp()
-        self.assertEqual(c.day_classes(day("d")), ["DF65", "Victoria"])
-        self.assertEqual(c.day_classes(day("d", "Victoria")), ["Victoria"])
-
     def test_at_most_15_race_days(self):
         c = comp()
         add_days(c, MAX_RACE_DAYS)
@@ -115,14 +93,13 @@ class CompetitionTests(unittest.TestCase):
     def test_with_details_keeps_the_race_days(self):
         c = comp()
         add_days(c, 1)
-        c.add_race_day(day("DF65 day", "DF65"))
+        c.add_race_day(day("DF65 day"))
         changed = c.with_details(comp(name="Renamed", race_count=None))
         self.assertEqual((changed.name, changed.race_count), ("Renamed", None))
         self.assertEqual(changed.race_days, c.race_days)
         self.assertTrue(changed.same_details(comp(name="Renamed", race_count=None)))
         self.assertFalse(changed.same_details(c))
-        with self.assertRaises(ValueError):             # DF65 races, but DF65 taken out
-            c.with_details(comp(classes=["Victoria"]))
+        self.assertEqual(c.with_details(comp(classes=["victoria"])).race_days, c.race_days)
 
 
 if __name__ == "__main__":

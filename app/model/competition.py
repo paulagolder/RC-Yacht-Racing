@@ -2,7 +2,8 @@
 
     name        shown as the title, and gives the file name ("DF65 2026" -> DF65_2026.cxml)
     year
-    classes     the boat classes that race; a race day may be for just one of them
+    classes     the ids (keys in yachtclasses.xml) of the boat classes that race, such as
+                ["df65", "victoria"]; every race day is open to all of them
     clubs       only sailors from these clubs may race (none listed: any club)
     race_count  each boat's best race_count races count towards its points (None: all of them)
     directory   the sub folder of the output folder that Export HTML writes into
@@ -56,8 +57,6 @@ class Competition:
         self.directory = safe_file_name((self.directory or "").strip() or self.name, "competition")
         if len(self.race_days) > MAX_RACE_DAYS:
             raise ValueError(f"A competition can have at most {MAX_RACE_DAYS} race days.")
-        for day in self.race_days:
-            self.check_race_day(day)
 
     @property
     def title(self) -> str:
@@ -69,20 +68,6 @@ class Competition:
 
     def has_class(self, boat_class: str) -> bool:
         return class_key(boat_class) in {class_key(c) for c in self.classes}
-
-    def class_name(self, boat_class: str) -> str:
-        """The class as the competition writes it ('VICTORIA' -> 'victoria'), or as given if not one."""
-        return next((c for c in self.classes if class_key(c) == class_key(boat_class)), boat_class)
-
-    def day_classes(self, day: RaceDay) -> list[str]:
-        """The classes that may sail in a race day: its own, or else the competition's."""
-        return [day.boat_class] if day.boat_class else list(self.classes)
-
-    def check_race_day(self, day: RaceDay) -> None:
-        """Raises ValueError if the day's class is not one of the competition's classes."""
-        if day.boat_class and not self.has_class(day.boat_class):
-            raise ValueError(f"{day.name}: class '{day.boat_class}' is not one of this "
-                             f"competition's classes ({', '.join(self.classes)}).")
 
     def next_race_day_name(self) -> str:
         """A default name ('Race day 3') that no existing race day is using."""
@@ -96,13 +81,10 @@ class Competition:
         """Add a race day at the end and return its index. Raises ValueError if it does not fit."""
         if self.is_full:
             raise ValueError(f"A competition can have at most {MAX_RACE_DAYS} race days.")
-        self.check_race_day(day)
         self.race_days.append(day)
         return len(self.race_days) - 1
 
     def replace_race_day(self, index: int, day: RaceDay) -> None:
-        """Raises ValueError if the day does not fit."""
-        self.check_race_day(day)
         self.race_days[index] = day
 
     def remove_race_day(self, index: int) -> RaceDay:
@@ -110,7 +92,7 @@ class Competition:
 
     def with_details(self, details: Competition) -> Competition:
         """A copy with the name, year, classes, clubs, race count and directory of details,
-        and this competition's race days. Raises ValueError if they do not fit together."""
+        and this competition's race days."""
         return Competition(details.name, details.year, details.classes, details.clubs,
                            details.race_count, details.directory, self.race_days)
 

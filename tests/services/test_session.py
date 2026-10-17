@@ -12,7 +12,7 @@ from app.storage.errors import StorageError
 
 
 def day(name: str, columns, rows) -> RaceDay:
-    return RaceDay.from_table(name, columns, rows, "DF95")
+    return RaceDay.from_table(name, columns, rows)
 
 
 def df95() -> Competition:
@@ -67,16 +67,19 @@ class SessionTests(unittest.TestCase):
         self.assertEqual([(d.name, d.columns, d.rows) for d in self.session.competition.race_days],
                          snapshot)
 
-    def test_race_in_another_class_changes_nothing(self):
-        self.session.add_race_day(day("Day 1", ["A"], [["1"]]))
-        before = self.path.read_bytes()
-        iom = RaceDay.from_table("IOM day", ["A"], [["1"]], "IOM")
-        with self.assertRaises(ValueError):
-            self.session.add_race_day(iom)
-        with self.assertRaises(ValueError):
-            self.session.update_race_day(0, iom)
-        self.assertEqual([d.name for d in self.session.competition.race_days], ["Day 1"])
-        self.assertEqual(self.path.read_bytes(), before)
+    def test_open_normalises_the_classes_to_ids(self):
+        self.path.write_text('<competition year="2026" name="Vic 65" classes="Victoria, DF 65,df65"/>',
+                             encoding="utf-8")
+        session = CompetitionSession.open(self.path)
+        self.assertEqual(session.competition.classes, ["df65", "victoria"])
+        self.assertEqual(session.class_names, ["DF65", "Victoria"])
+
+    def test_open_keeps_unknown_classes_as_written(self):
+        self.path.write_text('<competition year="2026" name="IOM" classes="IOM,Victoria"/>',
+                             encoding="utf-8")
+        session = CompetitionSession.open(self.path)
+        self.assertEqual(session.competition.classes, ["IOM", "Victoria"])
+        self.assertEqual(session.class_names, ["IOM", "Victoria"])
 
     def test_cannot_exceed_race_day_limit(self):
         for _ in range(MAX_RACE_DAYS):

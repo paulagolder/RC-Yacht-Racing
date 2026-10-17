@@ -16,8 +16,8 @@ def competition(*days: RaceDay, **details) -> Competition:
     return Competition(**details, race_days=list(days))
 
 
-def day(name: str, columns: list[str], rows, boat_class: str = "DF95") -> RaceDay:
-    return RaceDay.from_table(name, columns, rows, boat_class)
+def day(name: str, columns: list[str], rows) -> RaceDay:
+    return RaceDay.from_table(name, columns, rows)
 
 
 class CompetitionResultsTests(unittest.TestCase):
@@ -62,17 +62,9 @@ class CompetitionResultsTests(unittest.TestCase):
         results = competition_results(competition(race_day))
         self.assertEqual([r.sail_number for r in results.competitors], ["2", "10"])
 
-    def test_same_sail_number_in_two_classes_is_two_boats(self):
-        df95 = day("Race day 1", ["Race A"], [["12"], ["7"]], "DF95")
-        iom = day("Race day 2", ["Race A"], [["12"], ["3"]], "IOM")
-        results = competition_results(competition(df95, iom), MEMBERS)
-        self.assertEqual([(r.sail_number, r.boat_class, r.name, r.points) for r in results.competitors],
-                         [("12", "DF95", "Ann Smith", 1), ("12", "IOM", "", 1),
-                          ("07", "DF95", "Bob Jones", 2), ("3", "IOM", "", 2)])
-
-    def test_open_day_takes_the_class_of_the_sailor(self):
+    def test_a_boat_takes_the_class_of_the_sailor(self):
         cat = Sailor("   09", "iom", "Cat", "Brown", "RMBC")    # shown as the competition writes it
-        race_day = day("Race day 1", ["Race A"], [["9"], ["12"], ["99"]], "")
+        race_day = day("Race day 1", ["Race A"], [["9"], ["12"], ["99"]])
         results = competition_results(competition(race_day), MemberList([ANN, cat]))
         self.assertEqual([(r.sail_number, r.boat_class, r.name) for r in results.competitors],
                          [("09", "IOM", "Cat Brown"), ("12", "DF95", "Ann Smith"), ("99", "", "")])
@@ -95,6 +87,13 @@ class CompetitionResultsTests(unittest.TestCase):
         race_day = day("Race day 1", ["A"], [["12"], ["7"]])
         results = competition_results(competition(race_day, race_count=5), MEMBERS)
         self.assertEqual([(r.races, r.points) for r in results.competitors], [(1, 1), (1, 2)])
+
+    def test_classes_by_full_name_find_the_sailors(self):
+        race_day = day("Race day 1", ["Race A"], [["12"]])
+        comp = competition(race_day, classes=["df95"])
+        vic = Sailor("   12", "VICTORIA", "Vic", "Toria", "RMBC")
+        results = competition_results(comp, MemberList([vic]), classes=["Victoria"])
+        self.assertEqual([(r.boat_class, r.name) for r in results.competitors], [("Victoria", "Vic Toria")])
 
     def test_no_race_days(self):
         results = competition_results(competition(), MEMBERS)

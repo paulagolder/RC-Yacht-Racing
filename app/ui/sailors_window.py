@@ -16,7 +16,7 @@ from tkinter import messagebox, ttk
 from ..model.member_list import MemberList
 from ..model.sail_number import format_sail_number
 from ..model.sailor import DEFAULT_CLUB, Sailor
-from ..storage.boat_class_store import boat_class_names
+from ..storage.boat_class_store import boat_classes_or_defaults
 from ..storage.errors import StorageError
 from ..storage.member_store import MEMBERS_FILE, load_members, save_members
 
@@ -35,7 +35,7 @@ class SailorsWindow(tk.Toplevel):
         self.minsize(600, 380)
 
         self.members = MemberList()
-        self._class_names = boat_class_names(self.data_dir)   # from yachtclasses.xml
+        self._class_names = boat_classes_or_defaults(self.data_dir).names()   # yachtclasses.xml
         self._saved: list[Sailor] = []          # the sailors as last saved, to spot changes
 
         # The class filter

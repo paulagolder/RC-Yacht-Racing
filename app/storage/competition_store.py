@@ -5,7 +5,7 @@ sail numbers of its finishers in finishing order (the first <sail> came 1st):
 
     <competition year="2026" name="Victoria_df65_competition_2026" racecount="24" clubs="RMBC"
                  directory="Victoria2026" classes="df65,victoria" version="3">
-      <raceday name="Race day 1" class="df65">
+      <raceday name="Race day 1">
         <race name="Race A">
           <sail>12</sail>
           <sail>7</sail>
@@ -16,17 +16,18 @@ sail numbers of its finishers in finishing order (the first <sail> came 1st):
       ...
     </competition>
 
-classes and clubs are lists separated by commas. racecount (the best races that count for
-each boat) and clubs may be left out, and directory defaults to one made from the name.
-A race day's class must be one of the competition's classes; a race day without one is open
-to all of them.
+classes and clubs are lists separated by commas; classes are the class ids (keys) from
+yachtclasses.xml. racecount (the best races that count for each boat) and clubs may be left
+out, and directory defaults to one made from the name. Every race day is open to all the
+competition's classes.
 
 An empty <sail/> is a place left empty; the sails after it keep their places. A new
 competition has no race days yet, and a new race has no sails.
 
 Older files can still be read, and are written in this layout the next time they are saved.
 Versions 1 and 2 have a single class="DF95" and no name (the name becomes "DF95 2026"); in
-version 1 each race day is a table of <columns> and <row>s.
+version 1 each race day is a table of <columns> and <row>s. A class="..." on a race day,
+from before race days were always open to every class, is ignored.
 """
 
 from __future__ import annotations
@@ -64,10 +65,7 @@ def competition_to_xml(comp: Competition) -> ET.Element:
                        "version": FORMAT_VERSION})
     root = ET.Element("competition", {key: _clean(value) for key, value in attributes.items()})
     for day in comp.race_days:
-        day_attributes = {"name": _clean(day.name)}
-        if day.boat_class:
-            day_attributes["class"] = _clean(day.boat_class)
-        day_el = ET.SubElement(root, "raceday", day_attributes)
+        day_el = ET.SubElement(root, "raceday", {"name": _clean(day.name)})
         for race in day.races:
             race_el = ET.SubElement(day_el, "race", {"name": _clean(race.name)})
             finishers = list(race.finishers)
@@ -84,12 +82,11 @@ def competition_from_xml(root: ET.Element) -> Competition:
     comp = _competition_details(root)
     for index, day_el in enumerate(root.findall("raceday"), start=1):
         name = day_el.get("name") or comp.next_race_day_name()
-        boat_class = day_el.get("class", "")
         try:
             if day_el.find("columns") is not None:
-                day = _race_day_from_table_xml(name, day_el, boat_class)      # version 1
+                day = _race_day_from_table_xml(name, day_el)      # version 1
             else:
-                day = _race_day_from_xml(name, day_el, index, boat_class)
+                day = _race_day_from_xml(name, day_el, index)
             comp.add_race_day(day)
         except ValueError as exc:
             raise StorageError(f"Race day {index}: {exc}") from exc
@@ -126,21 +123,21 @@ def _competition_details(root: ET.Element) -> Competition:
         raise StorageError(str(exc)) from exc
 
 
-def _race_day_from_xml(name: str, day_el: ET.Element, index: int, boat_class: str) -> RaceDay:
+def _race_day_from_xml(name: str, day_el: ET.Element, index: int) -> RaceDay:
     race_els = day_el.findall("race")
     if not race_els:
         raise StorageError(f"Race day {index} has no <race> elements.")
     races = [Race(race_el.get("name") or race_name(n),
                   [(sail_el.text or "") for sail_el in race_el.findall("sail")])
              for n, race_el in enumerate(race_els, start=1)]
-    return RaceDay(name, races, boat_class)
+    return RaceDay(name, races)
 
 
-def _race_day_from_table_xml(name: str, day_el: ET.Element, boat_class: str) -> RaceDay:
+def _race_day_from_table_xml(name: str, day_el: ET.Element) -> RaceDay:
     """A version 1 race day: a table with one column per race and one row per place."""
     columns = [(c.text or "") for c in day_el.find("columns").findall("column")]
     rows = [[(c.text or "") for c in row_el.findall("cell")] for row_el in day_el.findall("row")]
-    return RaceDay.from_table(name, columns, rows, boat_class)
+    return RaceDay.from_table(name, columns, rows)
 
 
 def save_competition(comp: Competition, path) -> None:
@@ -189,8 +186,7 @@ def update_competition_details(path, details: Competition) -> Path:
     race days), and rename its file to match the name.
 
     Returns the new path. Refuses (StorageError) if another competition already has that
-    file name, or if a race's class is no longer one of the classes. The backup (.bak) moves
-    with the file.
+    file name. The backup (.bak) moves with the file.
     """
     path = Path(path)
     comp = load_competition(path)

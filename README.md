@@ -19,7 +19,8 @@ Everything lives in `~/.pyraceresults` (created on first run):
   **File > Club sailors...** menu in the competitions window, then click Save. "Show class" limits the list to one class.
 - Competition files, named after the competition, like `Victoria_df65_competition_2026.cxml`.
   New competitions are saved here, and every `.cxml` file here is listed in the first window.
-  (File > Open other file opens one from elsewhere.)
+- `yachtclasses.xml`: the boat classes, one `<boatclass key="df95" fullname="DF95" cypher="95" symbol="@" />`
+  per class. Edit it with the **File > Boat classes...** menu, then click Save.
 
 The first window lists every competition in the data folder. Double-click one (or select it and click
 **Open**) to open it in its own window, or click **New competition**. **Details...** changes its name,
@@ -34,7 +35,6 @@ Needs Python 3.9 or newer with tkinter (included with the Windows and macOS inst
 on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
-    python main.py DF95_2026.cxml    # also opens a competition straight away
 
 ## Results so far
 

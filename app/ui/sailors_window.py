@@ -13,10 +13,10 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from ..model.boat_class import BOAT_CLASSES
 from ..model.member_list import MemberList
 from ..model.sail_number import format_sail_number
 from ..model.sailor import DEFAULT_CLUB, Sailor
+from ..storage.boat_class_store import boat_class_names
 from ..storage.errors import StorageError
 from ..storage.member_store import MEMBERS_FILE, load_members, save_members
 
@@ -35,6 +35,7 @@ class SailorsWindow(tk.Toplevel):
         self.minsize(600, 380)
 
         self.members = MemberList()
+        self._class_names = boat_class_names(self.data_dir)   # from yachtclasses.xml
         self._saved: list[Sailor] = []          # the sailors as last saved, to spot changes
 
         # The class filter
@@ -137,7 +138,7 @@ class SailorsWindow(tk.Toplevel):
         if self._filter_class() not in [None, *file_classes]:
             self.filter_var.set(ALL_CLASSES)    # its last sailor has gone
         self.filter_box.configure(values=[ALL_CLASSES, *file_classes])
-        self.class_box.configure(values=list(dict.fromkeys(file_classes + BOAT_CLASSES)))
+        self.class_box.configure(values=list(dict.fromkeys(file_classes + self._class_names)))
 
         self.tree.delete(*self.tree.get_children())
         shown = [i for i, sailor in enumerate(self.members.sailors) if self._shown(sailor)]

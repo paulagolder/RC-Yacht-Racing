@@ -11,31 +11,30 @@ from __future__ import annotations
 
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import messagebox, ttk
 
 from ..services.session import CompetitionSession
 from ..storage.competition_store import (
-    EXTENSION,
     delete_competition,
     list_competitions,
     load_competition,
     suggested_filename,
     update_competition_details,
 )
+from ..storage.boat_class_store import boat_class_names
 from ..storage.errors import StorageError
 from ..storage.settings_store import LOGO_FILE, load_settings
+from .boat_classes_window import BoatClassesWindow
 from .competition_window import CompetitionWindow
 from .competition_dialog import CompetitionDialog
 from .sailors_window import SailorsWindow
 
-FILE_TYPES = [("Competition files", f"*{EXTENSION}"), ("Older competition files", "*.xml"),
-              ("All files", "*.*")]
 COLUMNS = [("competition", "Competition", 220), ("classes", "Boat classes", 130), ("year", "Year", 60),
            ("days", "Race days", 80), ("file", "File", 200)]
 
 
 class FrontWindow(tk.Tk):
-    def __init__(self, path: str | None = None):
+    def __init__(self):
         super().__init__()
         self.settings = load_settings()
         self.title(self.settings.title)
@@ -51,8 +50,6 @@ class FrontWindow(tk.Tk):
         self._build_menu()
         self._build_widgets()
         self.refresh()
-        if path:
-            self.after(100, lambda: self.open_path(Path(path)))
 
     # -- building the window ----------------------------------------------------------------
 
@@ -61,17 +58,15 @@ class FrontWindow(tk.Tk):
         file_menu = tk.Menu(menubar, tearoff=False)
         file_menu.add_command(label="New competition...", accelerator="Ctrl+N",
                               command=self.new_competition)
-        file_menu.add_command(label="Open other file...", accelerator="Ctrl+O",
-                              command=self.open_other_file)
         file_menu.add_command(label="Refresh list", accelerator="F5", command=self.refresh)
         file_menu.add_separator()
         file_menu.add_command(label="Club sailors...", command=self.edit_sailors)
+        file_menu.add_command(label="Boat classes...", command=self.edit_boat_classes)
         file_menu.add_separator()
         file_menu.add_command(label="Quit", accelerator="Ctrl+Q", command=self.destroy)
         menubar.add_cascade(label="File", menu=file_menu)
         self.config(menu=menubar)
         self.bind("<Control-n>", lambda e: self.new_competition())
-        self.bind("<Control-o>", lambda e: self.open_other_file())
         self.bind("<F5>", lambda e: self.refresh())
         self.bind("<Control-q>", lambda e: self.destroy())
 
@@ -171,12 +166,6 @@ class FrontWindow(tk.Tk):
         if index is not None:
             self.open_path(self._paths[index])
 
-    def open_other_file(self) -> None:
-        path = filedialog.askopenfilename(parent=self, title="Open competition",
-                                          initialdir=self.settings.data_dir, filetypes=FILE_TYPES)
-        if path:
-            self.open_path(Path(path))
-
     def open_path(self, path: Path) -> None:
         key = path.resolve()
         window = self._open.get(key)
@@ -199,7 +188,8 @@ class FrontWindow(tk.Tk):
             self.refresh()                # race day counts may have changed
 
     def new_competition(self) -> None:
-        competition = CompetitionDialog(self).show()
+        class_names = boat_class_names(self.settings.data_dir)
+        competition = CompetitionDialog(self, class_names=class_names).show()
         if competition is None:
             return
         path = self.settings.data_dir / suggested_filename(competition)
@@ -240,7 +230,8 @@ class FrontWindow(tk.Tk):
         except StorageError as exc:
             messagebox.showerror(title, str(exc), parent=self)
             return
-        details = CompetitionDialog(self, title=title, competition=competition).show()
+        details = CompetitionDialog(self, title=title, competition=competition,
+                                    class_names=boat_class_names(self.settings.data_dir)).show()
         if details is None or details.same_details(competition):
             return
         try:
@@ -278,3 +269,6 @@ class FrontWindow(tk.Tk):
 
     def edit_sailors(self) -> None:
         SailorsWindow(self, self.settings.data_dir).show()
+
+    def edit_boat_classes(self) -> None:
+        BoatClassesWindow(self, self.settings.data_dir).show()

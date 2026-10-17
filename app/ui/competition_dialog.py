@@ -24,8 +24,9 @@ HINT = {"foreground": "gray40"}
 
 class CompetitionDialog(tk.Toplevel):
     def __init__(self, parent: tk.Tk | tk.Toplevel, title: str = "New competition",
-                 competition: Competition | None = None):
+                 competition: Competition | None = None, class_names: list[str] | None = None):
         super().__init__(parent)
+        class_names = class_names or BOAT_CLASSES
         self._title = title
         self.title(title)
         self.resizable(False, False)
@@ -37,7 +38,7 @@ class CompetitionDialog(tk.Toplevel):
         frame.grid()
         self.name_var = tk.StringVar(value=comp.name if comp else "")
         self.year_var = tk.StringVar(value=str(comp.year if comp else datetime.date.today().year))
-        self.classes_var = tk.StringVar(value=", ".join(comp.classes) if comp else BOAT_CLASSES[0])
+        self.classes_var = tk.StringVar(value=", ".join(comp.classes) if comp else class_names[0])
         self.clubs_var = tk.StringVar(value=", ".join(comp.clubs) if comp else DEFAULT_CLUB)
         self.count_var = tk.StringVar(value=str(comp.race_count or "") if comp else "")
         self.directory_var = tk.StringVar(value=comp.directory if comp else "")
@@ -47,7 +48,7 @@ class CompetitionDialog(tk.Toplevel):
         self._row(frame, 1, "Year:", ttk.Spinbox(frame, from_=MIN_YEAR, to=MAX_YEAR,
                                                  textvariable=self.year_var, width=8))
         self._row(frame, 2, "Boat classes:", ttk.Combobox(frame, textvariable=self.classes_var,
-                                                          values=BOAT_CLASSES, width=32),
+                                                          values=class_names, width=32),
                   "for example: DF65, Victoria")
         self._row(frame, 3, "Clubs:", ttk.Entry(frame, textvariable=self.clubs_var, width=34),
                   "only their sailors may race; blank: any club")

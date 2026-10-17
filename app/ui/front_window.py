@@ -1,6 +1,7 @@
 """front_window.py - the first window: every competition in the data folder.
 
-Competition files (*.cxml) in ~/.pyraceresults are listed here. Double-click one (or select it
+Competition files (*.cxml) in the data folder (~/.pyraceresults, or a portable copy's system
+folder) are listed here. Double-click one (or select it
 and click Open) to open it in its own window. Edit changes a competition's name, classes, clubs
 and so on (and its file name to match the name); New creates a file in the folder. Delete takes it off the list by renaming the file to .cxml.deleted, so it can be brought
 back.
@@ -22,7 +23,7 @@ from ..storage.competition_store import (
 )
 from ..storage.boat_class_store import boat_classes_or_defaults
 from ..storage.errors import StorageError
-from ..storage.settings_store import LOGO_FILE, load_settings
+from ..storage.settings_store import DATA_DIR, LOGO_FILE, load_settings
 from .boat_classes_window import BoatClassesWindow
 from .competition_window import CompetitionWindow
 from .competition_dialog import CompetitionDialog
@@ -33,9 +34,9 @@ COLUMNS = [("competition", "Competition", 220), ("classes", "Boat classes", 130)
 
 
 class FrontWindow(tk.Tk):
-    def __init__(self):
+    def __init__(self, data_dir: Path = DATA_DIR):
         super().__init__()
-        self.settings = load_settings()
+        self.settings = load_settings(data_dir)
         self.title(self.settings.title)
         self.geometry("760x480")
         self.minsize(600, 360)

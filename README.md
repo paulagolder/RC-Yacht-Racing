@@ -42,6 +42,7 @@ on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
     python main.py --version         # pyraceresults 1.02 (17 October 2026)
+    python main.py --data FOLDER     # uses another data folder
 
 ## Entering sail numbers
 
@@ -62,8 +63,8 @@ such as PAG and PGU; the window will not accept a clashing one.
 ## Results so far
 
 In a competition's window, the **Results** button offers two tables. Each has one row per
-competitor: a club sailor in a class, with every sail number they sailed ("440 / 23"). A sailor
-sails one boat at a time, so their boats are alternatives and all their races count together (the
+competitor: a club sailor, with every sail number they sailed in any of the classes ("440 / 23").
+A sailor sails one boat at a time, so their boats are alternatives and all their races count together (the
 race day window marks a sailor who appears twice in one race). A sail number that is no club
 sailor's is a competitor of its own. Each row has the place, the points on each race day and how
 many races were sailed. A finish earns its place in points (row 1 = 1st =
@@ -112,6 +113,31 @@ Data is not part of the program: replacing it with a new build never touches any
     ./build_linux.sh                 # runs the tests, then builds dist/pyraceresults
 
 It runs on the Linux version it was built on and newer ones, so build on the oldest one you need.
+
+The build also makes a **portable copy** for a USB stick, `dist/RC-Yacht-Racing/`:
+
+    RC-Yacht-Racing/
+        pyraceresults        the program
+        output/              exported web pages: the only folder users need to open
+        system/              the data folder (instead of ~/.pyraceresults), README.txt and
+                             start-linux.sh
+
+To make a stick, plug it in and run
+
+    ./make_stick.sh /media/$USER/STICK         # data from ~/.pyraceresults (or name another)
+
+It builds the program if needed and copies the club's files into `system/` (with
+`output_folder` set to `output`). On a stick that already has data it only updates the
+program, leaving the data alone. It ends by saying whether the program runs straight from the
+stick: Linux only runs `.exe`, `.bat` and `.com` files from FAT32 sticks, so on those use
+`start-linux.sh` (below), or format the stick exFAT.
+
+The program uses a `system` folder beside it as its data folder, and there the default
+`output_folder` is `output` (a relative output folder is beside the data folder). Copy the whole
+folder to the stick and put the club's files (`RMBCSail.xml`, `properties.xml`,
+`yachtclasses.xml`, competitions) in `system/`. If a stick will not let the program run,
+`bash system/start-linux.sh` runs a temporary copy of it with the stick's data. `--data FOLDER`
+picks any data folder by hand.
 
 **Windows** (on Windows, with Python from python.org):
 

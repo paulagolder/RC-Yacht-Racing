@@ -3,6 +3,10 @@
 
     python main.py                   (lists the competitions in ~/.pyraceresults)
     python main.py --version         (prints the version and its date)
+    python main.py --data FOLDER     (uses FOLDER as the data folder instead)
+
+A portable copy has a system folder beside the program file, and uses that as its data folder
+(see storage/settings_store.py).
 
 The Windows program file has no console (it is built --windowed), so there --version and --help
 show their text in a message box instead of printing it.
@@ -13,6 +17,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import sys
+from pathlib import Path
 
 from app import __version__, __version_date__
 
@@ -56,10 +61,19 @@ class _VersionAction(argparse.Action):
 def main(argv: list[str] | None = None) -> None:
     parser = _Parser(prog=PROGRAM, description="Enter and edit RC yacht race results.")
     parser.add_argument("-V", "--version", action=_VersionAction)
-    parser.parse_args(argv)
+    parser.add_argument("--data", metavar="FOLDER", type=Path,
+                        help="the data folder (default: a system folder beside the program, "
+                             "otherwise ~/.pyraceresults)")
+    args = parser.parse_args(argv)
 
+    from app.storage.settings_store import find_data_dir
     from app.ui.front_window import FrontWindow     # only once a window is wanted
-    FrontWindow().mainloop()
+    FrontWindow(args.data or find_data_dir(program_dir())).mainloop()
+
+
+def program_dir() -> Path:
+    """The folder the program file is in (the built file's, or this script's)."""
+    return Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve().parent
 
 
 if __name__ == "__main__":

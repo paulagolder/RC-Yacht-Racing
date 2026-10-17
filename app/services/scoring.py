@@ -3,10 +3,10 @@
 Each finish scores Race.points(place) (1st = 1 point, 2nd = 2 ...), so fewer points is better.
 A boat's points are the sum of its best competition.race_count races (all of them if the
 competition does not say), over every race day. A competitor is a club sailor in a class: the
-sailor with that sail number in one of the competition's classes (the first one, if several).
-A sailor with several boats sails one at a time, so their sail numbers are alternatives and
-all their races count together. A sail number that is no club sailor's is a competitor of its
-own, with a blank class.
+sailor the entry means (see sail_entry.SailResolver: a sail number, perhaps tagged to say which
+sailor). A sailor with several boats sails one at a time, so their sail numbers are alternatives
+and all their races count together. An entry that is no single club sailor's (unrecognised, or
+ambiguous and not tagged) is a competitor of its own, with a blank class.
 
 competition_results gives every boat, ranked by points. From it:
 
@@ -19,28 +19,22 @@ from __future__ import annotations
 
 from ..model.boat_class import class_key
 from ..model.competition import Competition
-from ..model.member_list import MemberList
 from ..model.race import Race
 from ..model.results import CURRENT, FINAL, CompetitorResult, Results
+from ..model.sail_entry import SailResolver
 from ..model.sail_number import sail_key, sort_key
 
 
-def competition_results(competition: Competition, members: MemberList | None = None,
-                        classes: list[str] | None = None) -> Results:
-    """Every boat in every race day so far, fewest points first (then by class and sail number).
-
-    classes are the competition's classes as the club sailors' file names them (their full
-    names); by default, competition.classes.
-    """
-    classes = list(classes or competition.classes)
+def competition_results(competition: Competition, resolver: SailResolver | None = None) -> Results:
+    """Every competitor in every race day so far, fewest points first (then by class and sail
+    number). Without a resolver (no club sailors), each sail number is a competitor."""
     days = competition.race_days
     found: dict[tuple[str, str], CompetitorResult] = {}
     for d, day in enumerate(days):
         for race in day.races:
             for place, number in race.places():
-                sailors = members.find_in(number, classes, competition.clubs) if members else []
-                sailor = sailors[0] if sailors else None
-                boat_class = _class_name(sailor.boat_class, classes) if sailor else ""
+                sailor = resolver.sailor(number) if resolver else None
+                boat_class = resolver.class_name(sailor) if sailor else ""
                 key = sailor.person_key if sailor else ("", sail_key(number))
                 shown = sailor.number if sailor else number.strip()
                 result = found.get(key)
@@ -76,8 +70,3 @@ def final_results(results: Results) -> Results:
     competitors = [r for r in results.competitors if r.races >= needed]
     return Results(results.day_names, results.race_count, competitors, FINAL,
                    left_out=len(results.competitors) - len(competitors))
-
-
-def _class_name(boat_class: str, classes: list[str]) -> str:
-    """The class as written in classes ('VICTORIA' -> 'Victoria')."""
-    return next((c for c in classes if class_key(c) == class_key(boat_class)), boat_class)

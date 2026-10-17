@@ -2,7 +2,6 @@ import unittest
 
 from app.model.boat_class import class_key
 from app.model.member_list import MemberList
-from app.model.race import Race
 from app.model.sail_number import format_sail_number, sail_key, sort_key
 from app.model.sailor import Sailor
 
@@ -12,17 +11,17 @@ CAT = Sailor("   12", "VICTORIA", "Cat", "Brown", "RMBC")
 DAN = Sailor("   05", "DF95", "Dan", "Moor", "Other club")
 
 
-class OneBoatAtATimeTests(unittest.TestCase):
-    def test_same_sailor_twice_in_a_race_is_a_problem(self):
-        members = MemberList([Sailor("  440", "DF95", "Paul", "Gutteridge", "RMBC"),
-                              Sailor("   23", "DF95", "Paul", "Gutteridge", "RMBC"), ANN])
-        races = [Race("A", ["440", "12", "23"]), Race("B", ["23", "12"])]
-        self.assertEqual(members.check_races(races, ["DF95"]),
-                         [(2, 0, "Paul Gutteridge is already sailing 440 in row 1 of this race.")])
-
+class PersonTests(unittest.TestCase):
     def test_person_key_ignores_case_and_spacing(self):
         self.assertEqual(Sailor("1", "df 95", "Paul ", "GUTTERIDGE").person_key,
                          Sailor("2", "DF95", "paul", "Gutteridge").person_key)
+
+    def test_tag_defaults_to_the_initials(self):
+        self.assertEqual(Sailor("29", "DF95", "Paul", "Golder").tag, "PG")
+        self.assertEqual(Sailor("29", "DF95", "Paul", "Golder", tag=" pag ").tag, "PAG")
+        self.assertEqual(Sailor("1", "DF95", "", "Cher").tag, "C")
+        self.assertIsNotNone(Sailor("1", "DF95", "A", "B", tag="TOOLONG").problem())
+        self.assertIsNotNone(Sailor("1", "DF95", "A", "B", tag="A/B").problem())
 
 
 class SailNumberTests(unittest.TestCase):
@@ -80,6 +79,15 @@ class MemberListTests(unittest.TestCase):
         self.assertIsNone(members.check(Sailor("12", "DF95", "Ann", "S"), ignore=0))
         self.assertIsNotNone(members.check(Sailor("1", "DF95", "", "")))
 
+    def test_tags_must_tell_apart_sailors_with_the_same_sail_number(self):
+        golder = Sailor("   29", "DF95", "Paul", "Golder")                        # tag PG
+        members = MemberList([golder])
+        clash = members.check(Sailor("   29", "DF65", "Paul", "Gutteridge"))       # also PG
+        self.assertIn("tag PG", clash)
+        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Gutteridge", tag="PGU")))
+        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Golder")))   # same sailor
+        self.assertIsNone(members.check(Sailor("   30", "DF65", "Paul", "Gutteridge")))
+
     def test_add_replace_remove(self):
         members = MemberList([ANN])
         members.add(BOB)
@@ -99,38 +107,6 @@ class MemberListTests(unittest.TestCase):
         sailors = [ANN]
         MemberList(sailors).add(BOB)
         self.assertEqual(sailors, [ANN])
-
-    def test_check_races(self):
-        races = [Race("A", ["12", "99", "012"]), Race("B", ["7", "", "12"])]
-        problems = self.members.check_races(races, ["DF95"])
-        self.assertEqual([(r, c) for r, c, _ in problems], [(1, 0), (2, 0)])
-        self.assertIn("99", problems[0][2])
-        self.assertIn("row 1", problems[1][2])      # 12 repeated in the first race
-
-    def test_check_races_in_table_order(self):
-        races = [Race("A", ["", "99"]), Race("B", ["98"])]
-        problems = self.members.check_races(races, ["DF95"])
-        self.assertEqual([(r, c) for r, c, _ in problems], [(0, 1), (1, 0)])
-
-    def test_check_races_against_the_days_classes(self):
-        races = [Race("A", ["12", "7"])]
-        problems = self.members.check_races(races, ["Victoria"])
-        self.assertEqual([(r, c) for r, c, _ in problems], [(1, 0)])     # Bob has no Victoria
-        self.assertIn("No Victoria sailor", problems[0][2])
-        self.assertEqual(self.members.check_races(races, ["Victoria", "DF95"]), [])
-        problems = self.members.check_races([Race("A", ["99"])], ["Victoria", "DF95"])
-        self.assertIn("No Victoria or DF95 sailor", problems[0][2])
-
-    def test_find_in(self):
-        self.assertEqual(self.members.find_in("12", ["DF95", "Victoria"]), [ANN, CAT])
-        self.assertEqual(self.members.find_in("12", ["Victoria", "IOM"]), [CAT])
-        self.assertEqual(self.members.find_in("7", ["Victoria"]), [])
-
-    def test_check_races_from_clubs(self):
-        members = MemberList([ANN, DAN])
-        problems = members.check_races([Race("A", ["12", "5"])], ["DF95"], ["RMBC"])
-        self.assertEqual([(r, c) for r, c, _ in problems], [(1, 0)])
-        self.assertIn("from RMBC", problems[0][2])
 
 
 if __name__ == "__main__":

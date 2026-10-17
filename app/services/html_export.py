@@ -1,11 +1,12 @@
 """html_export.py - a race day's table, or a competition's results, as a web page.
 
     path = export_race_day_html(folder, race_day, club_title=..., competition_title=...,
-                                members=..., classes=..., clubs=...)
+                                resolver=...)
     path = export_results_html(folder, results, club_title=..., competition_title=...)
                                     # results_current.html or results_final.html
 
-classes are the competition's classes by their full names (CompetitionSession.class_names).
+resolver (a sail_entry.SailResolver, CompetitionSession.resolver) knows the competition's classes
+and finds the sailor each entry means.
 
 Each page is a single file (styles and club logo included), so it can be emailed, put on a
 website or printed as it is. On a race day's page each sail number is shown with its sailor's
@@ -20,9 +21,9 @@ import html
 import re
 from pathlib import Path
 
-from ..model.member_list import MemberList
 from ..model.race_day import RaceDay
 from ..model.results import ALL, Results
+from ..model.sail_entry import SailResolver
 from ..storage.errors import StorageError
 from ..storage.settings_store import LOGO_FILE
 from .results_table import results_note, total_columns, total_values
@@ -66,28 +67,27 @@ def _logo_tag() -> str:
     return f'<img src="data:image/png;base64,{data}" alt="">'
 
 
-def _cell(value: str, members: MemberList | None, classes: list[str], clubs: list[str]) -> str:
+def _cell(value: str, resolver: SailResolver | None) -> str:
     value = value.strip()
     if not value:
         return "<td></td>"
-    sailors = members.find_in(value, classes, clubs) if members is not None else []
-    sailor = sailors[0] if sailors else None
+    sailor = resolver.sailor(value) if resolver is not None else None
     name = f'<span class="name">{html.escape(sailor.name)}</span>' if sailor else ""
     return f'<td><span class="sail">{html.escape(value)}</span>{name}</td>'
 
 
 def race_day_html(race_day: RaceDay, *, club_title: str, competition_title: str,
-                  members: MemberList | None = None, classes: list[str] | None = None,
-                  clubs: list[str] | None = None, generated: datetime.datetime | None = None) -> str:
+                  resolver: SailResolver | None = None,
+                  generated: datetime.datetime | None = None) -> str:
     generated = generated or datetime.datetime.now()
     e = html.escape
     day_name = race_day.label
-    classes = list(classes or [])
+    classes = resolver.class_names if resolver is not None else []
     subtitle = f"{e(day_name)} &middot; {e(', '.join(classes))}" if classes else e(day_name)
     head = "".join(f"<th>{e(name)}</th>" for name in race_day.columns)
     body = "\n".join(
         f'<tr><td class="row">{number}</td>'
-        + "".join(_cell(value, members, classes, clubs or []) for value in row) + "</tr>"
+        + "".join(_cell(value, resolver) for value in row) + "</tr>"
         for number, row in enumerate(race_day.rows, start=1))
     table = f"<thead><tr><th>Row</th>{head}</tr></thead>\n<tbody>\n{body}\n</tbody>"
     return _page(f"{competition_title} - {day_name}", competition_title, subtitle, "", table,

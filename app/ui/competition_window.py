@@ -189,7 +189,8 @@ class CompetitionWindow(tk.Toplevel):
         draft = RaceDay(competition.next_race_day_name(today),
                         default_races(self.settings.default_columns), today)
         day = RaceDayWindow(self, draft, title=f"{competition.title} - new race day",
-                            default_rows=self.settings.default_rows, members=members,
+                            default_rows=self.settings.default_rows,
+                            resolver=self.session.resolver(members),
                             **self._race_day_options()).show()
         if day is None:
             return
@@ -208,7 +209,8 @@ class CompetitionWindow(tk.Toplevel):
                 return "break"
             day = session.competition.race_days[index]
             edited = RaceDayWindow(self, day, title=f"{session.competition.title} - {day.name}",
-                                   default_rows=self.settings.default_rows, members=members,
+                                   default_rows=self.settings.default_rows,
+                                   resolver=self.session.resolver(members),
                                    **self._race_day_options()).show()
             if edited is not None:
                 try:
@@ -238,13 +240,12 @@ class CompetitionWindow(tk.Toplevel):
             members = load_members(self.settings.data_dir)
         except StorageError:
             members = None                 # still work out the results, just without names
-        return competition_results(self.session.competition, members, self.session.class_names)
+        return competition_results(self.session.competition, self.session.resolver(members))
 
     def _race_day_options(self) -> dict:
-        """The competition's classes and clubs, and where the race day window's Export HTML writes."""
+        """Where the race day window's Export HTML writes, and the titles for its page."""
         competition = self.session.competition
-        return {"classes": self.session.class_names, "clubs": competition.clubs,
-                "html_folder": self.settings.output_dir / competition.directory,
+        return {"html_folder": self.settings.output_dir / competition.directory,
                 "competition_title": competition.title, "club_title": self.settings.title}
 
     def _load_members(self) -> MemberList | None:

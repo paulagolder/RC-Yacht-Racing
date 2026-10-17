@@ -3,6 +3,9 @@
     SailorsWindow(parent, data_dir).show()
 
 Pick a sailor in the list to change or delete them, or fill in the boxes and click Add.
+Tag is a short code (initials, if left blank) that tells sailors apart when two of them have the
+same sail number in different classes; change it (for example PG -> PAG) if two such sailors'
+initials are the same.
 "Show class" limits the list to one boat class.
 Nothing is written until Save is clicked; closing with unsaved changes asks first.
 """
@@ -22,7 +25,7 @@ from ..storage.member_store import MEMBERS_FILE, load_members, save_members
 
 ALL_CLASSES = "All classes"
 COLUMNS = [("sail", "Sail number", 90), ("class", "Boat class", 100), ("forename", "Forename", 120),
-           ("surname", "Surname", 130), ("club", "Club", 80)]
+           ("surname", "Surname", 130), ("club", "Club", 80), ("tag", "Tag", 50)]
 
 
 class SailorsWindow(tk.Toplevel):
@@ -68,6 +71,7 @@ class SailorsWindow(tk.Toplevel):
         self.sail_var, self.class_var = tk.StringVar(), tk.StringVar()
         self.forename_var, self.surname_var = tk.StringVar(), tk.StringVar()
         self.club_var = tk.StringVar(value=DEFAULT_CLUB)
+        self.tag_var = tk.StringVar()
         ttk.Label(form, text="Sail number:").grid(row=0, column=0, sticky="w")
         self.sail_entry = ttk.Entry(form, textvariable=self.sail_var, width=8)
         self.sail_entry.grid(row=0, column=1, sticky="w", padx=(4, 12), pady=2)
@@ -83,6 +87,10 @@ class SailorsWindow(tk.Toplevel):
         ttk.Label(form, text="Surname:").grid(row=1, column=2, sticky="w")
         ttk.Entry(form, textvariable=self.surname_var, width=16).grid(row=1, column=3, sticky="w",
                                                                       padx=(4, 12), pady=2)
+        ttk.Label(form, text="Tag:").grid(row=1, column=4, sticky="w")
+        ttk.Entry(form, textvariable=self.tag_var, width=6).grid(row=1, column=5, sticky="w",
+                                                                 padx=4, pady=2)
+        ttk.Label(form, text="blank: initials", foreground="gray40").grid(row=1, column=6, sticky="w")
 
         buttons = ttk.Frame(form)
         buttons.grid(row=2, column=0, columnspan=6, pady=(8, 0), sticky="w")
@@ -145,7 +153,8 @@ class SailorsWindow(tk.Toplevel):
         for i in shown:
             sailor = self.members.sailors[i]
             self.tree.insert("", "end", iid=str(i), values=(
-                sailor.number, sailor.boat_class, sailor.forename, sailor.surname, sailor.club))
+                sailor.number, sailor.boat_class, sailor.forename, sailor.surname, sailor.club,
+                sailor.tag))
         if select is not None and shown:
             target = next((i for i in shown if i >= select), shown[-1])
             self.tree.selection_set(str(target))
@@ -163,6 +172,7 @@ class SailorsWindow(tk.Toplevel):
             self.forename_var.set(sailor.forename)
             self.surname_var.set(sailor.surname)
             self.club_var.set(sailor.club)
+            self.tag_var.set(sailor.tag)
         unsaved = " (not saved yet)" if self._unsaved() else ""
         total = len(self.members)
         wanted = self._filter_class()
@@ -174,7 +184,7 @@ class SailorsWindow(tk.Toplevel):
 
     def _clear_form(self) -> None:
         self.tree.selection_remove(*self.tree.selection())
-        for var in (self.sail_var, self.forename_var, self.surname_var):    # class and club stay
+        for var in (self.sail_var, self.forename_var, self.surname_var, self.tag_var):  # class, club stay
             var.set("")
         self.sail_entry.focus_set()
 
@@ -184,7 +194,7 @@ class SailorsWindow(tk.Toplevel):
         sail = self.sail_var.get().strip()
         return Sailor(format_sail_number(sail) if sail else "", self.class_var.get().strip(),
                       self.forename_var.get().strip(), self.surname_var.get().strip(),
-                      self.club_var.get().strip())
+                      self.club_var.get().strip(), self.tag_var.get())
 
     def _unsaved(self) -> bool:
         return self.members.sailors != self._saved

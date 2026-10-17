@@ -3,10 +3,13 @@
 The file lives in the data folder (~/.pyraceresults), one <sail> per boat:
 
     <sails>
-      <sail sailnumber="   01" boatclass="VICTORIA" forename="Polly" surname="Breeze" club="RMBC" />
-      <sail sailnumber="   02" boatclass="DF95" forename="Sam" surname="Tiller" club="RMBC" />
+      <sail sailnumber="   01" boatclass="VICTORIA" forename="Polly" surname="Breeze" club="RMBC"
+            tag="PB" />
+      <sail sailnumber="   02" boatclass="DF95" forename="Sam" surname="Tiller" club="RMBC" tag="ST" />
       ...
     </sails>
+
+tag tells sailors apart when sail numbers clash across classes; left out, it is the initials.
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ def members_from_xml(root: ET.Element, path: Path | None = None) -> MemberList:
     for number, el in enumerate(root.findall("sail"), start=1):
         sailor = Sailor(el.get("sailnumber", ""), el.get("boatclass", "").strip(),
                         el.get("forename", "").strip(), el.get("surname", "").strip(),
-                        el.get("club", "").strip())
+                        el.get("club", "").strip(), el.get("tag", ""))
         problem = sailor.problem()
         if problem:
             raise StorageError(f"{MEMBERS_FILE}, sail {number}: {problem}")
@@ -50,7 +53,8 @@ def members_to_xml(members: MemberList) -> ET.Element:
     root = ET.Element("sails")
     for s in members.sailors:
         ET.SubElement(root, "sail", {"sailnumber": s.sail_number, "boatclass": s.boat_class,
-                                     "forename": s.forename, "surname": s.surname, "club": s.club})
+                                     "forename": s.forename, "surname": s.surname, "club": s.club,
+                                     "tag": s.tag})
     return root
 
 

@@ -1,11 +1,14 @@
 import unittest
 
+from app.model.boat_class import BoatClass
 from app.model.competition import Competition
 from app.model.member_list import MemberList
 from app.model.race_day import RaceDay
 from app.model.sailor import Sailor
 from app.model.results import CURRENT, FINAL
-from app.services.scoring import competition_results, current_results, final_results
+from app.model.sail_entry import SailResolver
+from app.services import scoring
+from app.services.scoring import current_results, final_results
 
 ANN = Sailor("   12", "DF95", "Ann", "Smith", "RMBC")
 BOB = Sailor("   07", "DF95", "Bob", "Jones", "RMBC")
@@ -15,6 +18,16 @@ MEMBERS = MemberList([ANN, BOB])
 def competition(*days: RaceDay, **details) -> Competition:
     details = {"name": "DF95 2026", "year": 2026, "classes": ["DF95", "IOM"], **details}
     return Competition(**details, race_days=list(days))
+
+
+def competition_results(comp: Competition, members: MemberList | None = None,
+                        classes: list[str] | None = None):
+    """Scores comp, reading entries against members in comp's classes (or these)."""
+    resolver = None
+    if members is not None:
+        boat_classes = [BoatClass(c.lower(), c) for c in (classes or comp.classes)]
+        resolver = SailResolver(members, boat_classes, comp.clubs)
+    return scoring.competition_results(comp, resolver)
 
 
 def day(name: str, columns: list[str], rows) -> RaceDay:
@@ -123,6 +136,15 @@ class CompetitionResultsTests(unittest.TestCase):
                           for r in results.competitors],
                          [("12", "Ann Smith", 2, 3, [3, None]),
                           ("440 / 23", "Paul Gutteridge", 3, 4, [3, 1])])
+
+    def test_tagged_entries_score_their_sailor(self):
+        golder = Sailor("   29", "DF95", "Paul", "Golder", "RMBC", "PAG")
+        gutteridge = Sailor("   29", "IOM", "Paul", "Gutteridge", "RMBC", "PGU")
+        race_day = day("Race day 1", ["A"], [["29/PGU"], ["29/pag"], ["29"]])
+        results = competition_results(competition(race_day), MemberList([golder, gutteridge]))
+        self.assertEqual([(r.sail_numbers, r.boat_class, r.name, r.points) for r in results.competitors],
+                         [("29", "IOM", "Paul Gutteridge", 1), ("29", "DF95", "Paul Golder", 2),
+                          ("29", "", "", 3)])                 # untagged and ambiguous: unknown
 
     def test_no_race_days(self):
         results = competition_results(competition(), MEMBERS)

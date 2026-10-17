@@ -8,9 +8,10 @@ Up go the other way. The window is modal: the window behind it is blocked until 
 
 The race day is open to all the competition's classes, which are shown but cannot be changed
 here (change them in the competition's details). Each cell holds a sail number. Given a
-MemberList, the window shows whose boat the current cell is, marks numbers that are not
-sailors' in the competition's classes and clubs (or are repeated in a race), and will not
-save until they are fixed.
+SailResolver (the club sailors, classes and clubs), the window shows whose boat the current cell
+is and marks entries that are unrecognised, ambiguous or repeated in a race; it will not save
+until they are fixed. A sail number that could be more than one sailor's opens a list to choose
+from as the cursor leaves the cell, and is tagged to say which ("12/PAG", "12@").
 """
 
 from __future__ import annotations
@@ -21,13 +22,14 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from ..model.limits import DEFAULT_ROWS, MAX_PLACES, MAX_RACES
-from ..model.member_list import MemberList, Problem
 from ..model.race import Race, race_name
 from ..model.race_day import RaceDay, dated_name, format_date, is_dated_name, parse_date
+from ..model.sail_entry import Problem, SailResolver
 from ..services.html_export import export_race_day_html
 from ..storage.errors import StorageError
 from .browser import open_in_browser
 from .grid_navigation import next_cell_position, previous_cell_position
+from .sail_chooser import SailChooser
 
 BOLD = ("TkDefaultFont", 10, "bold")
 BAD_STYLE = "Bad.TEntry"
@@ -42,8 +44,7 @@ def _without_trailing_blank_rows(rows: list[list[str]]) -> list[list[str]]:
 
 class RaceDayWindow(tk.Toplevel):
     def __init__(self, parent: tk.Tk | tk.Toplevel, race_day: RaceDay, title: str = "Edit race day",
-                 default_rows: int = DEFAULT_ROWS, members: MemberList | None = None,
-                 classes: list[str] | None = None, clubs: list[str] | None = None,
+                 default_rows: int = DEFAULT_ROWS, resolver: SailResolver | None = None,
                  html_folder: Path | None = None, competition_title: str = "",
                  club_title: str = ""):
         super().__init__(parent)
@@ -52,9 +53,9 @@ class RaceDayWindow(tk.Toplevel):
         self.resizable(False, False)
         self.transient(parent)
         self.result: RaceDay | None = None
-        self.members = members
-        self.classes = list(classes or [])         # the competition's, by their full names
-        self.clubs = list(clubs or [])
+        self.resolver = resolver                    # None: sail numbers are not checked
+        self.members = resolver.members if resolver is not None else None
+        self.classes = resolver.class_names if resolver is not None else []
         self.html_folder = html_folder              # Export HTML writes here (None: no button)
         self.competition_title = competition_title
         self.club_title = club_title
@@ -188,6 +189,8 @@ class RaceDayWindow(tk.Toplevel):
         pos = self._locate(event.widget)
         if pos is None:                   # focus is on a button: leave the key alone
             return None
+        if not self._resolve(event.widget):
+            return "break"                # an ambiguous sail not chosen yet: stay in the cell
         row, col = pos
         n_rows, n_cols = len(self.cells), len(self.columns)
         if forward:
@@ -245,23 +248,46 @@ class RaceDayWindow(tk.Toplevel):
     def _show_sailor(self, entry: ttk.Entry) -> None:
         if self.members is None:
             return
+        resolver = self.resolver
         classes = " or ".join(self.classes)
         value = entry.get().strip()
-        sailors = self.members.find_in(value, self.classes, self.clubs) if value else []
+        sailors = resolver.candidates(value) if value else []
         if not value:
             self.sailor_var.set(f"Enter a {classes} sail number.")
+        elif len(sailors) == 1:
+            self.sailor_var.set(resolver.describe(sailors[0]))
         elif sailors:
-            self.sailor_var.set("; ".join(f"{s.number}: {s.name} ({s.boat_class}, {s.club})"
-                                          for s in sailors))
+            self.sailor_var.set("Could be " + "; ".join(resolver.describe(s) for s in sailors)
+                                + ". Press Enter to choose.")
         else:
-            clubs = f" from {', '.join(self.clubs)}" if self.clubs else ""
-            self.sailor_var.set(f"No {classes} sailor{clubs} has sail number '{value}'.")
+            clubs = f" from {', '.join(resolver.clubs)}" if resolver.clubs else ""
+            self.sailor_var.set(f"Unrecognised sail '{value}': no {classes} sailor{clubs} has it.")
+
+    def _resolve(self, entry: ttk.Entry) -> bool:
+        """If the cell's sail could be more than one sailor's, ask which and tag it. False if
+        the choice was cancelled."""
+        if self.members is None:
+            return True
+        value = entry.get().strip()
+        choices = self.resolver.choices(value) if value else []
+        if not choices:
+            return True
+        chosen = SailChooser(self, value, [(text, self.resolver.describe(sailor))
+                                           for text, sailor in choices]).show()
+        entry.focus_set()
+        if chosen is None:
+            self._mark_problems()
+            return False
+        entry.delete(0, tk.END)
+        entry.insert(0, chosen)
+        self._show_sailor(entry)
+        return True
 
     def _mark_problems(self) -> list[Problem]:
         """Colour the cells that are wrong, and return the problems."""
         if self.members is None:
             return []
-        problems = self.members.check_races(self._races(), self.classes, self.clubs)
+        problems = self.resolver.check_races(self._races())
         bad = {(r, c) for r, c, _ in problems}
         for r, row in enumerate(self.cells):
             for c, cell in enumerate(row):
@@ -271,6 +297,12 @@ class RaceDayWindow(tk.Toplevel):
     # -- buttons ----------------------------------------------------------------------------
 
     def _save(self) -> None:
+        for r, row in enumerate(self.cells):              # first, choose for every ambiguous sail
+            for c, cell in enumerate(row):
+                if self.members is not None and self.resolver.choices(cell.get().strip()):
+                    self._focus_cell(r, c)
+                    if not self._resolve(cell):
+                        return
         day = self._race_day("Race day")
         if day is None:
             return
@@ -331,7 +363,7 @@ class RaceDayWindow(tk.Toplevel):
             path = export_race_day_html(
                 self.html_folder, day, club_title=self.club_title,
                 competition_title=self.competition_title,
-                members=self.members, classes=self.classes, clubs=self.clubs)
+                resolver=self.resolver)
         except StorageError as exc:
             messagebox.showerror("Export HTML", str(exc), parent=self)
             return

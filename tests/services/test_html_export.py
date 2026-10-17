@@ -3,9 +3,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from app.model.boat_class import BoatClass
 from app.model.member_list import MemberList
 from app.model.race_day import RaceDay
 from app.model.results import CURRENT, FINAL, CompetitorResult, Results
+from app.model.sail_entry import SailResolver
 from app.model.sailor import Sailor
 from app.services.html_export import (
     export_race_day_html,
@@ -16,8 +18,16 @@ from app.services.html_export import (
 )
 
 MEMBERS = MemberList([Sailor("   03", "DF95", "Rosie", "Keel", "RMBC")])
-PAGE = dict(club_title="RMBC <club>", competition_title="DF95 2026", members=MEMBERS,
-            classes=["DF95"], clubs=["RMBC"], generated=datetime.datetime(2026, 10, 16, 19, 45))
+DF95, IOM = BoatClass("df95", "DF95"), BoatClass("iom", "IOM")
+
+
+def page(classes=(DF95,), clubs=("RMBC",)) -> dict:
+    return dict(club_title="RMBC <club>", competition_title="DF95 2026",
+                resolver=SailResolver(MEMBERS, list(classes), list(clubs)),
+                generated=datetime.datetime(2026, 10, 16, 19, 45))
+
+
+PAGE = page()
 
 
 def day(name: str, rows) -> RaceDay:
@@ -41,12 +51,12 @@ class HtmlExportTests(unittest.TestCase):
         self.assertIn('<tr><td class="row">2</td>', page)
 
     def test_names_use_the_competitions_classes_and_clubs(self):
-        self.assertNotIn("Rosie Keel", race_day_html(day("d", [["3"]]), **{**PAGE, "classes": ["IOM"]}))
-        both = race_day_html(day("d", [["3"]]), **{**PAGE, "classes": ["IOM", "DF95"]})
+        self.assertNotIn("Rosie Keel", race_day_html(day("d", [["3"]]), **page([IOM])))
+        both = race_day_html(day("d", [["3"]]), **page([IOM, DF95]))
         self.assertIn("Rosie Keel", both)
         self.assertIn("<h2>d &middot; IOM, DF95</h2>", both)
-        page = race_day_html(day("d", [["3", "3"]]), **{**PAGE, "clubs": ["Other"]})
-        self.assertNotIn("Rosie Keel", page)
+        other_club = race_day_html(day("d", [["3", "3"]]), **page(clubs=["Other"]))
+        self.assertNotIn("Rosie Keel", other_club)
 
     def test_export_makes_folder_and_replaces_page(self):
         with tempfile.TemporaryDirectory() as tmp:

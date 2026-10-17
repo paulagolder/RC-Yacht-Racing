@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..model.boat_class import DEFAULT_BOAT_CLASSES, BoatClassList
+from ..model.boat_class import DEFAULT_BOAT_CLASSES, BoatClass, BoatClassList
 from ..model.competition import Competition
+from ..model.member_list import MemberList
 from ..model.race_day import RaceDay
+from ..model.sail_entry import SailResolver
 from ..storage.competition_store import load_competition, save_competition
 from ..storage.errors import StorageError
 
@@ -34,6 +36,15 @@ class CompetitionSession:
     def class_names(self) -> list[str]:
         """The competition's classes by their full names, for the screen and for finding sailors."""
         return self.boat_classes.display_names(self.competition.classes)
+
+    @property
+    def class_objects(self) -> list[BoatClass]:
+        """The competition's classes from yachtclasses.xml (one that is not there: just its id)."""
+        return [self.boat_classes.find(c) or BoatClass(c, c) for c in self.competition.classes]
+
+    def resolver(self, members: MemberList | None) -> SailResolver:
+        """Reads the competition's sail entries against these club sailors."""
+        return SailResolver(members, self.class_objects, self.competition.clubs)
 
     # -- opening and creating -------------------------------------------------------------
 

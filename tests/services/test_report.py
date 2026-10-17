@@ -1,10 +1,12 @@
 import datetime
 import unittest
 
+from app.model.boat_class import BoatClass
 from app.model.competition import Competition
 from app.model.member_list import MemberList
 from app.model.race import Race
 from app.model.race_day import RaceDay
+from app.model.sail_entry import SailResolver
 from app.model.sailor import Sailor
 from app.services.report import competition_summary, summary_text
 from app.services.scoring import competition_results
@@ -14,6 +16,7 @@ BOB = Sailor("   07", "DF65", "Bob", "Jones", "RMBC")
 CAT = Sailor("   03", "VICTORIA", "Cat", "Brown", "RMBC")
 MEMBERS = MemberList([ANN, BOB, CAT])
 CLASSES = ["DF65", "Victoria"]
+BOAT_CLASSES = [BoatClass("df65", "DF65"), BoatClass("victoria", "Victoria")]
 
 
 def competition() -> Competition:
@@ -25,7 +28,7 @@ def competition() -> Competition:
 
 def summary():
     comp = competition()
-    return competition_summary(comp, competition_results(comp, MEMBERS, CLASSES), CLASSES)
+    return competition_summary(comp, competition_results(comp, SailResolver(MEMBERS, BOAT_CLASSES, comp.clubs)), CLASSES)
 
 
 class SummaryTests(unittest.TestCase):
@@ -48,7 +51,7 @@ class SummaryTests(unittest.TestCase):
         self.assertIsNone(summary().qualified)
         comp = competition()
         comp.race_count = 2
-        s = competition_summary(comp, competition_results(comp, MEMBERS, CLASSES), CLASSES)
+        s = competition_summary(comp, competition_results(comp, SailResolver(MEMBERS, BOAT_CLASSES, comp.clubs)), CLASSES)
         self.assertEqual(s.qualified, 2)                          # 12 and 07
         self.assertIn("Qualified:    2 with 2 races or more", summary_text(s))
 

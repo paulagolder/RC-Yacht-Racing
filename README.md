@@ -12,7 +12,7 @@ Enter and edit race results for radio-controlled model sailing yachts.
   stored as class ids without repeats (`classes="df65,victoria"`).
 - Every race day is open to all the competition's classes, and shows them but cannot change them.
   Each cell is a **sail number**, which must belong to a sailor in one of those classes from one
-  of the competition's clubs.
+  of the competition's clubs (see **Entering sail numbers** below).
 
 ## The data folder
 
@@ -20,7 +20,7 @@ Everything lives in `~/.pyraceresults` (created on first run):
 
 - `properties.xml`: the window title, the default number of rows and columns for a new race day, and
   `output_folder`, where **Export HTML** writes (default `~/Documents/raceresult_output`).
-- `RMBCSail.xml`: the club sailors, one `<sail sailnumber="   01" boatclass="DF95" forename=".." surname=".." club="RMBC" />` per boat. Edit it with the
+- `RMBCSail.xml`: the club sailors, one `<sail sailnumber="   01" boatclass="DF95" forename=".." surname=".." club="RMBC" tag="PG" />` per boat (tag: see below). Edit it with the
   **File > Club sailors...** menu in the competitions window, then click Save. "Show class" limits the list to one class.
 - Competition files, named after the competition, like `Victoria_df65_competition_2026.cxml`.
   New competitions are saved here, and every `.cxml` file here is listed in the first window.
@@ -41,6 +41,22 @@ Needs Python 3.9 or newer with tkinter (included with the Windows and macOS inst
 on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
+
+## Entering sail numbers
+
+A race day is open to all the competition's classes, so a sail number may be more than one
+eligible sailor's. As each number is typed the window says whose it is:
+
+- **No match**: "Unrecognised sail", and the cell is marked.
+- **One match**: that sailor.
+- **More than one**: when the cursor leaves the cell (Enter, Tab ...), a list asks which, and the
+  number is tagged with your choice: `62*` (a **class tag**, the class's symbol from
+  `yachtclasses.xml`) when the choices are one sailor in different classes, or `29/PAG` (a
+  **sailor tag**) when they are different sailors. Save also asks for any still to choose.
+
+Each sailor's tag is their initials unless changed in **Club sailors** (Tag). If two sailors with
+the same sail number in different classes have the same initials, give one of them another tag,
+such as PAG and PGU; the window will not accept a clashing one.
 
 ## Results so far
 
@@ -103,7 +119,8 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             race_day.py         RaceDay: a name, a date and its races, also seen as a table
             competition.py      Competition: name, year, classes, clubs, races counted, race days
             sailor.py           Sailor: one club boat
-            member_list.py      MemberList: the club sailors, and checking race results against them
+            member_list.py      MemberList: the club sailors
+            sail_entry.py       SailResolver: which sailor an entry ("12", "12@", "29/PAG") means; checks race days
             results.py          Results: each competitor's races and points; the current and final tables
             summary.py          CompetitionSummary: the figures for the report
         storage/                reading and writing files
@@ -128,6 +145,7 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             report_window.py    the text summary (Report in a competition's window)
             browser.py          opens an exported page in the web browser
             sailors_window.py   the Club sailors window
+            sail_chooser.py     asks which sailor an ambiguous sail number means
         resources/              club_logo.svg (the original) and club_logo.png (made from it by build_linux.sh)
     tests/                      the same layout as app/: python -m unittest discover -s tests -t .
 

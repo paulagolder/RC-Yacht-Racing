@@ -1,7 +1,6 @@
-"""member_list.py - the club's sailors, and checking race results against them.
+"""member_list.py - the club's sailors (RMBCSail.xml), one per boat.
 
-Every sail number in a race must belong to a sailor in the race day's classes from the
-competition's clubs, and may only appear once in each race.
+Race results are checked against them by sail_entry.SailResolver.
 """
 
 from __future__ import annotations
@@ -9,11 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from .boat_class import class_key
-from .race import Race
 from .sail_number import sail_key
 from .sailor import Sailor
-
-Problem = tuple[int, int, str]      # (row, race index, message), counting from 0
 
 
 class MemberList:
@@ -40,12 +36,6 @@ class MemberList:
             return None
         return sailor
 
-    def find_in(self, sail_number: str, classes: list[str],
-                clubs: list[str] | None = None) -> list[Sailor]:
-        """Every sailor with this sail number in any of these classes (from clubs, if given)."""
-        found = (self.find(sail_number, boat_class, clubs) for boat_class in classes)
-        return list(dict.fromkeys(s for s in found if s is not None))
-
     def boat_classes(self) -> list[str]:
         """Every class in the list, as first written, in alphabetical order."""
         return sorted({s.boat_class for s in self.sailors}, key=str.upper)
@@ -58,8 +48,16 @@ class MemberList:
         if problem:
             return problem
         for i, other in enumerate(self.sailors):
-            if i != ignore and other.key == sailor.key:
+            if i == ignore:
+                continue
+            if other.key == sailor.key:
                 return f"{other.name} already has {other.boat_class} sail number {other.number}."
+            if (sail_key(other.sail_number) == sail_key(sailor.sail_number)
+                    and other.same_person != sailor.same_person and other.tag == sailor.tag):
+                return (f"{other.name} ({other.boat_class} {other.number}) has the same sail number "
+                        f"and tag {other.tag}. Give one of them a different tag, such as "
+                        f"{sailor.forename[:2].upper()}{sailor.surname[:1].upper()}, so their "
+                        "results can be told apart.")
         return None
 
     def add(self, sailor: Sailor) -> None:
@@ -82,41 +80,3 @@ class MemberList:
         sailor = self.sailors.pop(index)
         self._reindex()
         return sailor
-
-    # -- checking results -------------------------------------------------------------------
-
-    def check_races(self, races: list[Race], classes: list[str],
-                    clubs: list[str] | None = None) -> list[Problem]:
-        """Problems in a race day's results, in table order. Empty places are allowed.
-
-        A finish is wrong if its sail number is not that of a sailor in one of classes (from
-        one of clubs, if given), if the same sail number is already further up the same race,
-        or if the sailor is already further up the race with another of their boats (a sailor
-        sails one boat at a time). A number that is a sailor's in more than one of the classes
-        is accepted for now.
-        """
-        from_clubs = f" from {', '.join(clubs)}" if clubs else ""
-        problems = []
-        for c, race in enumerate(races):
-            seen: dict[str, int] = {}             # sail number -> row first seen
-            sailing: dict[tuple[str, str], tuple[int, str]] = {}   # person -> (row, sail number)
-            for place, value in race.places():
-                r = place - 1
-                sailors = self.find_in(value, classes, clubs)
-                if not sailors:
-                    problems.append((r, c, f"No {' or '.join(classes)} sailor{from_clubs} has "
-                                           f"sail number '{value}'."))
-                    continue
-                if sail_key(value) in seen:
-                    problems.append((r, c, f"Sail number '{value}' is already in row "
-                                           f"{seen[sail_key(value)] + 1} of this race."))
-                    continue
-                seen[sail_key(value)] = r
-                sailor = sailors[0]
-                if sailor.person_key in sailing:
-                    row, number = sailing[sailor.person_key]
-                    problems.append((r, c, f"{sailor.name} is already sailing {number.strip()} in "
-                                           f"row {row + 1} of this race."))
-                else:
-                    sailing[sailor.person_key] = (r, value)
-        return sorted(problems)

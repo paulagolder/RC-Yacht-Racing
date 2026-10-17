@@ -12,9 +12,9 @@ DAN = Sailor("   05", "DF95", "Dan", "Moor", "Other club")
 
 
 class PersonTests(unittest.TestCase):
-    def test_person_key_ignores_case_and_spacing(self):
-        self.assertEqual(Sailor("1", "df 95", "Paul ", "GRUNDY").person_key,
-                         Sailor("2", "DF95", "paul", "Grundy").person_key)
+    def test_same_person_ignores_case_spacing_and_class(self):
+        self.assertEqual(Sailor("1", "df 95", "Paul ", "GRUNDY").same_person,
+                         Sailor("2", "IOM", "paul", "Grundy").same_person)
 
     def test_tag_defaults_to_the_initials(self):
         self.assertEqual(Sailor("29", "DF95", "Paul", "Gale").tag, "PG")

@@ -1,7 +1,8 @@
 """sailor.py - one club sailor's boat: sail number, boat class, name and club.
 
-A sailor may have several boats (several sail numbers) in a class. They can only sail one at a
-time, so in results their sail numbers are alternatives: the same competitor (person_key).
+A sailor may have several boats (several sail numbers), in one class or several. They can only
+sail one at a time, so in results their boats are alternatives: the same competitor
+(same_person). Two different sailors with the same name are not told apart.
 
 Each sailor has a tag, a short code that tells them apart when sailors in different classes have
 the same sail number ("12/PAG", see sail_entry.py). It defaults to their initials ("PG") and can
@@ -52,12 +53,6 @@ class Sailor:
         """Two sailors with the same key are the same boat."""
         return class_key(self.boat_class), sail_key(self.sail_number)
 
-    @property
-    def person_key(self) -> tuple[str, str]:
-        """The same sailor in the same class, whichever of their boats: class and name, ignoring
-        case and spacing. (Two different sailors with the same name in a class are not told apart.)"""
-        return class_key(self.boat_class), self.same_person
-
     def problem(self) -> str | None:
         """What is missing from this sailor, or None if nothing is."""
         if not (self.number and self.boat_class.strip()):
@@ -70,5 +65,6 @@ class Sailor:
 
     @property
     def same_person(self) -> str:
-        """The sailor's name, ignoring case and spacing: the same person in any class."""
+        """The sailor's name, ignoring case and spacing: the same person, whichever boat or
+        class."""
         return " ".join(self.name.split()).casefold()

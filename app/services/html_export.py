@@ -113,7 +113,7 @@ def results_html(results: Results, *, club_title: str, competition_title: str,
     dates = [] if abridged else day_dates(results)
     span = ' rowspan="2"' if dates or grouped else ""     # over the Heats / Points row
     head = ("<tr>" + "".join(f"<th{span}>{heading}</th>" for heading in
-                             ("Place", "Sail numbers", "Class", "Name"))
+                             ("Place", "Sail numbers", "Name"))
             + "".join(f'<th colspan="2" class="day">Race<br>{e(date)}</th>' for date in dates)
             + "".join(f'<th colspan="{len(ids)}" class="day">{e(group)}</th>' if group else
                       f"<th{span}>{e(headings[ids[0]])}</th>"
@@ -136,9 +136,9 @@ def results_html(results: Results, *, club_title: str, competition_title: str,
         sums = "".join(f'<td class="{_total_class(headings[c], c == last)}">{values[c]}</td>'
                        for c, _, _ in totals)
         rows.append(f'<tr><td class="row">{place}</td><td class="sail">{e(r.sail_numbers)}</td>'
-                    f"<td>{e(r.boat_class)}</td><td>{e(r.name)}</td>{days}{sums}</tr>")
+                    f"<td>{e(r.name)}</td>{days}{sums}</tr>")
     if not rows:
-        columns = 4 + 2 * len(dates) + len(totals)
+        columns = 3 + 2 * len(dates) + len(totals)
         rows.append(f'<tr><td colspan="{columns}">No results yet.</td></tr>')
     table = f"<thead>{head}</thead>\n<tbody>\n" + "\n".join(rows) + "\n</tbody>"
     title = f"{results.title} at {generated.day} {generated:%B %Y}"   # which day's table it is

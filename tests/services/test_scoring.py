@@ -138,6 +138,17 @@ class CompetitionResultsTests(unittest.TestCase):
                          [("12", "Ann Smith", 2, 3, [3, None]),
                           ("440 / 23", "Paul Grundy", 3, 4, [3, 1])])
 
+    def test_a_sailor_in_two_classes_is_one_competitor(self):
+        paul = [Sailor("  440", "DF95", "Paul", "Grundy", "RMBC"),
+                Sailor("   23", "IOM", "Paul", "Grundy", "RMBC")]
+        day1 = day("Race day 1", ["A", "B"], [["440", "12"], ["12", "23"]])
+        results = competition_results(competition(day1), MemberList([ANN, *paul]),
+                                      classes=["DF95", "IOM"])
+        grundy = next(r for r in results.competitors if r.name == "Paul Grundy")
+        self.assertEqual((grundy.sail_numbers, grundy.boat_class, grundy.races, grundy.points),
+                         ("440 / 23", "DF95 / IOM", 2, 3))
+        self.assertEqual(len(results.competitors), 2)
+
     def test_tagged_entries_score_their_sailor(self):
         gale = Sailor("   29", "DF95", "Paul", "Gale", "RMBC", "PAG")
         grundy = Sailor("   29", "IOM", "Paul", "Grundy", "RMBC", "PGU")

@@ -2,11 +2,12 @@
 
 Each finish scores Race.points(place) (1st = 1 point, 2nd = 2 ...), so fewer points is better.
 A boat's points are the sum of its best competition.race_count races (all of them if the
-competition does not say), over every race day. A competitor is a club sailor in a class: the
-sailor the entry means (see sail_entry.SailResolver: a sail number, perhaps tagged to say which
-sailor). A sailor with several boats sails one at a time, so their sail numbers are alternatives
-and all their races count together. An entry that is no single club sailor's (unrecognised, or
-ambiguous and not tagged) is a competitor of its own, with a blank class.
+competition does not say), over every race day. A competitor is a club sailor: the sailor the
+entry means (see sail_entry.SailResolver: a sail number, perhaps tagged to say which sailor). A
+sailor with several boats, in one class or several, sails one at a time, so their sail numbers
+are alternatives and all their races count together (their classes: 'DF65 / Victoria'). An
+entry that is no single club sailor's (unrecognised, or ambiguous and not tagged) is a
+competitor of its own, with a blank class.
 
 competition_results gives every boat, ranked by points. From it:
 
@@ -24,6 +25,8 @@ from ..model.results import CURRENT, FINAL, CompetitorResult, Results
 from ..model.sail_entry import SailResolver
 from ..model.sail_number import sail_key, sort_key
 
+CLASS_SEPARATOR = " / "        # a sailor who sailed in several classes: 'DF65 / Victoria'
+
 
 def competition_results(competition: Competition, resolver: SailResolver | None = None) -> Results:
     """Every competitor in every race day so far, fewest points first (then by class and sail
@@ -35,7 +38,7 @@ def competition_results(competition: Competition, resolver: SailResolver | None 
             for place, number in race.places():
                 sailor = resolver.sailor(number) if resolver else None
                 boat_class = resolver.class_name(sailor) if sailor else ""
-                key = sailor.person_key if sailor else ("", sail_key(number))
+                key = ("sailor", sailor.same_person) if sailor else ("sail", sail_key(number))
                 shown = sailor.number if sailor else number.strip()
                 result = found.get(key)
                 if result is None:
@@ -43,9 +46,12 @@ def competition_results(competition: Competition, resolver: SailResolver | None 
                                               sailor.name if sailor else "", [None] * len(days),
                                               day_races=[0] * len(days))
                     found[key] = result
-                elif sail_key(shown) not in {sail_key(n) for n in
-                                             [result.sail_number, *result.other_sail_numbers]}:
-                    result.other_sail_numbers.append(shown)
+                else:
+                    if sail_key(shown) not in {sail_key(n) for n in
+                                               [result.sail_number, *result.other_sail_numbers]}:
+                        result.other_sail_numbers.append(shown)
+                    if boat_class not in result.boat_class.split(CLASS_SEPARATOR):
+                        result.boat_class += CLASS_SEPARATOR + boat_class
                 points = Race.points(place)
                 result.day_points[d] = (result.day_points[d] or 0) + points
                 result.day_races[d] += 1

@@ -1,7 +1,8 @@
 """results_table.py - how a results table is laid out, shared by the window and the web page.
 
-Every table has Place, Sail number, Class, Name and two columns per race day (Heats: the races
-sailed that day, and Points) under "Race" and the day's date, then the totals for its kind:
+Every table has Place, Sail numbers (every boat the sailor sailed, in any class), Name and two
+columns per race day (Heats: the races sailed that day, and Points) under "Race" and the day's
+date, then the totals for its kind:
 
     Current results   Races, Points (all races), Average (points per race)
     Final results     Heats and Points under "All races", then under "Best 20" (if only the

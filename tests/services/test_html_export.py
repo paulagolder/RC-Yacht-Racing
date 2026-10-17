@@ -96,7 +96,7 @@ class ResultsHtmlTests(unittest.TestCase):
         self.assertIn("Only sailors who have sailed 2 races or more", page)
         self.assertIn("1 sailor has not sailed enough races yet.", page)
         self.assertIn("Ann &lt;Smith&gt;", page)
-        self.assertIn('<tr><td class="row">1</td><td class="sail">12</td><td>DF95</td>'
+        self.assertIn('<tr><td class="row">1</td><td class="sail">12</td>'
                       '<td>Ann &lt;Smith&gt;</td><td class="heats">1</td><td class="num">1</td>'
                       '<td class="heats"></td><td class="num"></td>', page)
         self.assertEqual(page.count('<td class="row">2</td>'), 2)
@@ -129,7 +129,7 @@ class ResultsHtmlTests(unittest.TestCase):
                                abridged=True, **RESULTS_PAGE)
         self.assertIn("<thead><tr><th>Place</th>", current)          # one heading row
         empty = results_html(Results(["Day 1"], None, []), abridged=True, **RESULTS_PAGE)
-        self.assertIn('<td colspan="6">No results yet.</td>', empty)
+        self.assertIn('<td colspan="5">No results yet.</td>', empty)
 
     def test_export_writes_one_file_per_table(self):
         with tempfile.TemporaryDirectory() as tmp:

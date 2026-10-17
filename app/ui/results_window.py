@@ -55,12 +55,11 @@ class ResultsWindow(tk.Toplevel):
         days = range(len(results.day_names))               # ids, because names can repeat
         day_ids = [column for d in days for column in (f"h{d}", f"d{d}")]   # heats, points
         totals = total_columns(results)
-        self.tree = ttk.Treeview(body, columns=["place", "sail", "class", "name", *day_ids,
+        self.tree = ttk.Treeview(body, columns=["place", "sail", "name", *day_ids,
                                                 *(c for c, _, _ in totals)],
                                  show="headings", selectmode="browse")
         for column_id, heading, width, anchor in (("place", "Place", 50, "center"),
-                                                  ("sail", "Sail numbers", 100, "w"),
-                                                  ("class", "Class", 80, "w")):
+                                                  ("sail", "Sail numbers", 100, "w")):
             self.tree.heading(column_id, text=heading)
             self.tree.column(column_id, width=width, anchor=anchor, stretch=False)
         self.tree.heading("name", text="Name")
@@ -102,13 +101,13 @@ class ResultsWindow(tk.Toplevel):
 
         if not results.competitors:
             empty = "No one has sailed enough races yet." if results.left_out else "No results entered yet."
-            self.tree.insert("", "end", values=["", "", "", empty])
+            self.tree.insert("", "end", values=["", "", empty])
         for place, result in zip(results.places(), results.competitors):
             heats = result.day_races or [""] * len(result.day_points)
             days = [cell for h, p in zip(heats, result.day_points)
                     for cell in (("", "") if p is None else (h, p))]
             values = total_values(result, results.race_count)
-            self.tree.insert("", "end", values=[place, result.sail_numbers, result.boat_class,
+            self.tree.insert("", "end", values=[place, result.sail_numbers,
                                                 result.name or "(not a club sailor)", *days,
                                                 *(values[c] for c, _, _ in totals)])
         self._sorted_by: str | None = "place"    # rows start in place order, as results gives them
@@ -158,7 +157,7 @@ class ResultsWindow(tk.Toplevel):
             value = str(self.tree.set(item, column_id))
             if column_id == "sail":
                 return sort_key(value.split(" / ")[0])           # by the first sail number
-            if column_id in ("class", "name"):
+            if column_id == "name":
                 return (0, 0, value.lower())
             return (1, 0, "") if value == "" else (0, float(value), "")  # not sailed goes last
 

@@ -32,6 +32,13 @@ on Debian/Ubuntu install `python3-tk`). Nothing else to install.
     python main.py                   # lists the competitions in ~/.pyraceresults
     python main.py DF95_2026.cxml    # also opens a competition straight away
 
+## Results so far
+
+In a competition's window, **Generate results** opens a table with one row per competitor: their
+points on each race day, how many races they have sailed and their total points. A finish earns its
+place in points (row 1 = 1st = 1 point, row 2 = 2 points ...). The table starts with the fewest
+points first. Click a column heading to sort by it; click it again to reverse.
+
 ## Web pages of the results
 
 In the race day window, **Export HTML** writes the table as a web page, with each sailor's name under
@@ -70,6 +77,8 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
         resources/          club_logo.svg (the original) and club_logo.png (made from it by build_linux.sh)
         front_window.py     the first window: the list of competitions
         competition_window.py  one competition: its race days and a preview
+        results.py          each competitor's races and points over all race days (no GUI)
+        results_window.py   the results window (Generate results in a competition's window)
     tests/                  python -m unittest discover -s tests -t .
 
 Everything that is not a window is tested without needing a screen. To change a limit (columns, rows,

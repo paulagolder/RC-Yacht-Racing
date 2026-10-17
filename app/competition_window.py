@@ -14,6 +14,8 @@ from typing import Callable
 
 from .members import MemberList, load_members
 from .models import MAX_RACE_DAYS, RaceDay, default_columns
+from .results import competition_results
+from .results_window import ResultsWindow
 from .session import CompetitionSession
 from .settings import Settings
 from .storage import StorageError
@@ -49,6 +51,8 @@ class CompetitionWindow(tk.Toplevel):
         header = ttk.Frame(self, padding=(12, 10, 12, 4))
         header.pack(fill="x")
         ttk.Button(header, text="Close", command=self.close).pack(side="right", padx=(4, 0))
+        self.results_button = ttk.Button(header, text="Generate results", command=self.show_results)
+        self.results_button.pack(side="right", padx=(4, 0))
         self.title_var = tk.StringVar()
         self.path_var = tk.StringVar()
         ttk.Label(header, textvariable=self.title_var, font=("TkDefaultFont", 16, "bold")).pack(anchor="w")
@@ -117,6 +121,7 @@ class CompetitionWindow(tk.Toplevel):
         index = self._selected_index()
         can_add = len(session.competition.race_days) < MAX_RACE_DAYS
         self.new_button.state(["!disabled" if can_add else "disabled"])
+        self.results_button.state(["!disabled" if session.competition.race_days else "disabled"])
         for button in (self.edit_button, self.delete_button):
             button.state(["!disabled" if index is not None else "disabled"])
         if not session.competition.race_days:
@@ -190,6 +195,15 @@ class CompetitionWindow(tk.Toplevel):
                     messagebox.showerror("Cannot save", str(exc), parent=self)
                 self._refresh(select=index)
         return "break"
+
+    def show_results(self) -> None:
+        """Open a window with every competitor's races and points over all race days so far."""
+        try:
+            members = load_members(self.settings.data_dir)
+        except StorageError:
+            members = None                 # still show the results, just without names
+        competition = self.session.competition
+        ResultsWindow(self, competition_results(competition, members), competition.title)
 
     def _export_options(self) -> dict:
         """Where and how the race day window's Export HTML writes: a folder for this competition."""

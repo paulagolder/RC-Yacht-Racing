@@ -7,7 +7,7 @@
 
 import sys
 
-from app.front_window import FrontWindow
+from app.ui.front_window import FrontWindow
 
 
 def main(argv: list[str]) -> None:

@@ -63,26 +63,42 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
 
 ## Project layout
 
-    main.py                 starts the program
+    main.py                     starts the program
     app/
-        models.py           Competition and RaceDay, with all the rules and limits (no GUI)
-        storage.py          reads and writes the XML file (no GUI)
-        session.py          an open file: every change is saved at once, and undone if saving fails (no GUI)
-        race_day_window.py  the race day table window
-        dialogs.py          the New competition window
-        settings.py         the data folder and properties.xml (no GUI)
-        members.py          club sailors in RMBCSail.xml, and checking sail numbers (no GUI)
-        sailors_window.py   the Club sailors window
-        html_export.py      a race day as a web page (no GUI)
-        resources/          club_logo.svg (the original) and club_logo.png (made from it by build_linux.sh)
-        front_window.py     the first window: the list of competitions
-        competition_window.py  one competition: its race days and a preview
-        results.py          each competitor's races and points over all race days (no GUI)
-        results_window.py   the results window (Generate results in a competition's window)
-    tests/                  python -m unittest discover -s tests -t .
+        model/                  the data classes: no screen, no files
+            limits.py           how many races, places and race days; the year range
+            boat_class.py       boat classes, and matching them ("DF 95" = "DF95")
+            sail_number.py      matching, sorting and writing sail numbers ("1" = "01")
+            race.py             Race: its name and finishers in order (place = points)
+            race_day.py         RaceDay: a name and its races, also seen as a table
+            competition.py      Competition: boat class, year and race days
+            sailor.py           Sailor: one club boat
+            member_list.py      MemberList: the club sailors, and checking race results against them
+            results.py          Results: each competitor's races and points
+        storage/                reading and writing files
+            errors.py           StorageError, with a message that can be shown to the user
+            xml_file.py         writes a file safely, keeping a .bak
+            competition_store.py  competition (.cxml) files
+            member_store.py     the club sailors, RMBCSail.xml
+            settings_store.py   Settings: the data folder and properties.xml
+        services/               working with the model (no screen)
+            session.py          an open file: every change is saved at once, and undone if saving fails
+            scoring.py          works out the results over all race days
+            html_export.py      a race day as a web page
+        ui/                     the windows
+            front_window.py     the first window: the list of competitions
+            new_competition_dialog.py  asks for a boat class and year
+            competition_window.py  one competition: its race days and a preview
+            race_day_window.py  enter or edit one race day's table
+            grid_navigation.py  where Enter/Tab moves to in that table
+            results_window.py   the results (Generate results in a competition's window)
+            sailors_window.py   the Club sailors window
+        resources/              club_logo.svg (the original) and club_logo.png (made from it by build_linux.sh)
+    tests/                      the same layout as app/: python -m unittest discover -s tests -t .
 
-Everything that is not a window is tested without needing a screen. To change a limit (columns, rows,
-race days), edit the constants at the top of `app/models.py`.
+The layers only call downwards: ui uses services, storage and model; services use storage and
+model; storage uses model; model uses nothing else. Everything except ui/ is tested without
+needing a screen. To change a limit (races, rows, race days), edit `app/model/limits.py`.
 
 ## The file
 

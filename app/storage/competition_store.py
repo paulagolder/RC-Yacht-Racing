@@ -37,14 +37,15 @@ from __future__ import annotations
 import datetime
 import os
 import re
-import xml.etree.ElementTree as ET
+# Files are only read through xml_file.parse_xml, which refuses XML bombs.
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 
 from ..model.competition import Competition, safe_file_name, split_list
 from ..model.race import Race, race_name
 from ..model.race_day import RaceDay
 from .errors import StorageError
-from .xml_file import write_xml
+from .xml_file import parse_xml, write_xml
 
 FORMAT_VERSION = "3"
 EXTENSION = ".cxml"            # competition files, so they stand out from the other files in the folder
@@ -170,12 +171,12 @@ def load_competition(path) -> Competition:
     try:
         if path.stat().st_size > MAX_FILE_BYTES:
             raise StorageError(f"{path.name} is too large to be a competition file.")
-        tree = ET.parse(path)
+        root = parse_xml(path)
     except ET.ParseError as exc:
         raise StorageError(f"{path.name} is not valid XML: {exc}") from exc
     except OSError as exc:
         raise StorageError(f"Could not read {path.name}: {exc.strerror or exc}") from exc
-    return competition_from_xml(tree.getroot())
+    return competition_from_xml(root)
 
 
 def suggested_filename(comp: Competition) -> str:

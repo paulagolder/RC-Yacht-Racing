@@ -1,13 +1,39 @@
-"""xml_file.py - writing an XML file without ever leaving a half-written one."""
+"""xml_file.py - reading XML files safely, and writing them without ever leaving a half-written one.
+
+parse_xml refuses a file with a <!DOCTYPE> or <!ENTITY> declaration. Those are how "XML bomb"
+attacks work (a small crafted file that expands until the computer runs out of memory), and the
+program's own files never have one. Files that are not UTF-8 (UTF-16, say, where the check could
+be dodged) are refused too.
+"""
 
 from __future__ import annotations
 
 import os
+import re
 import shutil
-import xml.etree.ElementTree as ET
+# Every file is read through parse_xml below, which refuses XML bombs.
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 
 from .errors import StorageError
+
+
+_DECLARATION = re.compile(rb"<!\s*(DOCTYPE|ENTITY)", re.IGNORECASE)
+
+
+def parse_xml(path) -> ET.Element:
+    """Read an XML file and return its root element.
+
+    Raises OSError if it cannot be read, or ET.ParseError if it is not valid XML, is not UTF-8,
+    or has a <!DOCTYPE> or <!ENTITY> declaration.
+    """
+    data = Path(path).read_bytes()
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" in data:
+        raise ET.ParseError("it is not a UTF-8 file")
+    if _DECLARATION.search(data):
+        raise ET.ParseError("it has a <!DOCTYPE> or <!ENTITY> declaration, which is not allowed")
+    # DOCTYPE and ENTITY declarations were refused above, so this cannot be an XML bomb.
+    return ET.fromstring(data)  # nosec B314
 
 
 def write_xml(root: ET.Element, path: Path, make_folder: bool = False) -> None:

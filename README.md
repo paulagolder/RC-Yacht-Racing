@@ -41,6 +41,7 @@ Needs Python 3.9 or newer with tkinter (included with the Windows and macOS inst
 on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
+    python main.py --version         # pyraceresults 1.01 (17 October 2026)
 
 ## Entering sail numbers
 
@@ -92,6 +93,12 @@ In a results window, **Export HTML** writes that table as `results_current.html`
 `results_final.html` in the same folder.
 
 Each page is a single file (logo included), ready to email, upload or print.
+
+## Security check
+
+`./security_check.sh` checks the code with Bandit (`pipx install bandit`) and writes the report
+into the output folder, in `security/`. See [SECURITY.md](SECURITY.md) for what the program does
+outside its own files and what the findings mean.
 
 ## Making a Linux program file
 

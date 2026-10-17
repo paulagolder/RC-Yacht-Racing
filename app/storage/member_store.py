@@ -14,13 +14,14 @@ tag tells sailors apart when sail numbers clash across classes; left out, it is 
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+# Files are only read through xml_file.parse_xml, which refuses XML bombs.
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 
 from ..model.member_list import MemberList
 from ..model.sailor import Sailor
 from .errors import StorageError
-from .xml_file import write_xml
+from .xml_file import parse_xml, write_xml
 
 MEMBERS_FILE = "RMBCSail.xml"
 
@@ -74,7 +75,7 @@ def load_members(data_dir) -> MemberList:
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(_TEMPLATE, encoding="utf-8")
-        root = ET.parse(path).getroot()
+        root = parse_xml(path)
     except ET.ParseError as exc:
         raise StorageError(f"{path} is not valid XML: {exc}") from exc
     except OSError as exc:

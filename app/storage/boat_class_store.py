@@ -14,12 +14,13 @@ If the file is missing it is created with these four classes.
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+# Files are only read through xml_file.parse_xml, which refuses XML bombs.
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 
 from ..model.boat_class import DEFAULT_BOAT_CLASSES, BoatClass, BoatClassList
 from .errors import StorageError
-from .xml_file import write_xml
+from .xml_file import parse_xml, write_xml
 
 BOAT_CLASSES_FILE = "yachtclasses.xml"
 
@@ -63,7 +64,7 @@ def load_boat_classes(data_dir) -> BoatClassList:
     if not path.exists():
         save_boat_classes(BoatClassList(DEFAULT_BOAT_CLASSES), data_dir)
     try:
-        root = ET.parse(path).getroot()
+        root = parse_xml(path)
     except ET.ParseError as exc:
         raise StorageError(f"{path} is not valid XML: {exc}") from exc
     except OSError as exc:

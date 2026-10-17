@@ -20,11 +20,13 @@ model/limits.py.
 from __future__ import annotations
 
 import os
-import xml.etree.ElementTree as ET
+# Files are only read through xml_file.parse_xml, which refuses XML bombs.
+import xml.etree.ElementTree as ET  # nosec B405
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..model.limits import DEFAULT_RACES, DEFAULT_ROWS, MAX_PLACES, MAX_RACES
+from .xml_file import parse_xml
 
 DATA_DIR = Path.home() / ".pyraceresults"
 PROPERTIES_FILE = "properties.xml"
@@ -85,6 +87,6 @@ def load_settings(data_dir=DATA_DIR) -> Settings:
             root = settings_to_xml(Settings(data_dir))
             ET.indent(root)
             ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
-        return settings_from_xml(ET.parse(path).getroot(), data_dir)
+        return settings_from_xml(parse_xml(path), data_dir)
     except (OSError, ET.ParseError):
         return Settings(data_dir)

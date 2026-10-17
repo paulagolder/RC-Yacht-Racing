@@ -5,7 +5,8 @@
 Pick a race day from the list, and enter or edit its results. Every change is saved to the
 competition file as soon as the race day window is saved. The Results button offers the
 current results (every boat, by average points per race) and the final results (only boats
-that have sailed the competition's races counted, by points; needs races counted to be set).
+that have sailed the competition's races counted, by points; needs races counted to be set),
+and exports either as an abridged web page: the totals only, without the race days.
 Report gives a short text summary of the competition.
 """
 
@@ -19,12 +20,14 @@ from typing import Callable
 from ..model.limits import MAX_RACE_DAYS
 from ..model.member_list import MemberList
 from ..model.race_day import RaceDay, default_races
+from ..services.html_export import export_results_html
 from ..services.report import competition_summary, summary_text
 from ..services.scoring import competition_results, current_results, final_results
 from ..services.session import CompetitionSession
 from ..storage.errors import StorageError
 from ..storage.member_store import load_members
 from ..storage.settings_store import Settings
+from .browser import open_in_browser
 from .race_day_window import RaceDayWindow
 from .report_window import ReportWindow
 from .results_window import ResultsWindow
@@ -64,6 +67,11 @@ class CompetitionWindow(tk.Toplevel):
         self.results_menu.add_command(label="Current results (average points per race)",
                                       command=lambda: self.show_results(final=False))
         self.results_menu.add_command(label="Final results", command=lambda: self.show_results(final=True))
+        self.results_menu.add_separator()
+        self.results_menu.add_command(label="Export abridged current results (HTML, totals only)",
+                                      command=lambda: self.export_abridged(final=False))
+        self.results_menu.add_command(label="Export abridged final results (HTML, totals only)",
+                                      command=lambda: self.export_abridged(final=True))
         self.results_button["menu"] = self.results_menu
         self.results_button.pack(side="right", padx=(4, 0))
         ttk.Button(header, text="Report", command=self.show_report).pack(side="right", padx=(4, 0))
@@ -144,6 +152,7 @@ class CompetitionWindow(tk.Toplevel):
             1, label=(f"Final results (sailors with {count} races or more)" if count
                       else "Final results (set Races counted with Edit first)"),
             state="normal" if count else "disabled")
+        self.results_menu.entryconfigure(4, state="normal" if count else "disabled")
         for button in (self.edit_button, self.delete_button):
             button.state(["!disabled" if index is not None else "disabled"])
         if not session.competition.race_days:
@@ -227,6 +236,22 @@ class CompetitionWindow(tk.Toplevel):
         ResultsWindow(self, results, competition.title,
                       html_folder=self.settings.output_dir / competition.directory,
                       club_title=self.settings.title)
+
+    def export_abridged(self, final: bool) -> None:
+        """Write the current or final results as a web page with only the totals (no race days),
+        and offer to open it."""
+        competition = self.session.competition
+        results = final_results(self._results()) if final else current_results(self._results())
+        try:
+            path = export_results_html(self.settings.output_dir / competition.directory, results,
+                                       abridged=True, club_title=self.settings.title,
+                                       competition_title=competition.title)
+        except StorageError as exc:
+            messagebox.showerror("Export HTML", str(exc), parent=self)
+            return
+        if messagebox.askyesno("Export HTML", f"Saved to\n{path}\n\nOpen it in your web browser?",
+                               parent=self):
+            open_in_browser(path)
 
     def show_report(self) -> None:
         """Open a window with a text summary: race days, races, competitors and the leaders."""

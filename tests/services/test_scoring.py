@@ -51,6 +51,7 @@ class CompetitionResultsTests(unittest.TestCase):
         bob = next(r for r in results.competitors if r.sail_number == "07")
         ann = next(r for r in results.competitors if r.sail_number == "12")
         self.assertEqual((bob.day_points, bob.races, bob.points), ([2, 1], 2, 3))
+        self.assertEqual((bob.day_races, ann.day_races), ([1, 1], [1, 0]))
         self.assertEqual((ann.day_points, ann.races, ann.points), ([1, None], 1, 1))
 
     def test_names_and_sail_number_forms(self):

@@ -40,19 +40,22 @@ def competition_results(competition: Competition, resolver: SailResolver | None 
                 result = found.get(key)
                 if result is None:
                     result = CompetitorResult(shown, boat_class,
-                                              sailor.name if sailor else "", [None] * len(days))
+                                              sailor.name if sailor else "", [None] * len(days),
+                                              day_races=[0] * len(days))
                     found[key] = result
                 elif sail_key(shown) not in {sail_key(n) for n in
                                              [result.sail_number, *result.other_sail_numbers]}:
                     result.other_sail_numbers.append(shown)
                 points = Race.points(place)
                 result.day_points[d] = (result.day_points[d] or 0) + points
+                result.day_races[d] += 1
                 result.race_points.append(points)
     for result in found.values():
         result.points = sum(sorted(result.race_points)[:competition.race_count])
     competitors = sorted(found.values(), key=lambda r: (r.points, class_key(r.boat_class),
                                                         sort_key(r.sail_number)))
-    return Results([day.label for day in days], competition.race_count, competitors)
+    return Results([day.label for day in days], competition.race_count, competitors,
+                   day_dates=[day.date for day in days])
 
 
 def current_results(results: Results) -> Results:
@@ -60,7 +63,8 @@ def current_results(results: Results) -> Results:
     competitors = sorted(results.competitors, key=lambda r: (r.average, -r.races,
                                                              class_key(r.boat_class),
                                                              sort_key(r.sail_number)))
-    return Results(results.day_names, results.race_count, competitors, CURRENT)
+    return Results(results.day_names, results.race_count, competitors, CURRENT,
+                   day_dates=results.day_dates)
 
 
 def final_results(results: Results) -> Results:
@@ -69,4 +73,5 @@ def final_results(results: Results) -> Results:
     needed = results.race_count or 0
     competitors = [r for r in results.competitors if r.races >= needed]
     return Results(results.day_names, results.race_count, competitors, FINAL,
-                   left_out=len(results.competitors) - len(competitors))
+                   left_out=len(results.competitors) - len(competitors),
+                   day_dates=results.day_dates)

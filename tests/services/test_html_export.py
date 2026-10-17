@@ -68,10 +68,10 @@ class HtmlExportTests(unittest.TestCase):
 
 
 RESULTS = Results(["Day 1", "Day 2"], 2, [
-    CompetitorResult("12", "DF95", "Ann <Smith>", [1, None], [1], 1),
-    CompetitorResult("7", "DF95", "", [2, 3], [2, 3], 5),
-    CompetitorResult("3", "Victoria", "Cat Brown", [5, None], [5], 5),
-], FINAL, left_out=1)
+    CompetitorResult("12", "DF95", "Ann <Smith>", [1, None], [1], 1, day_races=[1, 0]),
+    CompetitorResult("7", "DF95", "", [2, 3], [2, 3], 5, day_races=[1, 1]),
+    CompetitorResult("3", "Victoria", "Cat Brown", [5, None], [5], 5, day_races=[1, 0]),
+], FINAL, left_out=1, day_dates=[datetime.date(2026, 9, 5), None])
 RESULTS_PAGE = dict(club_title="RMBC", competition_title="DF95 2026",
                     generated=datetime.datetime(2026, 10, 16, 19, 45))
 
@@ -84,28 +84,52 @@ class ResultsHtmlTests(unittest.TestCase):
     def test_page_contents(self):
         page = results_html(RESULTS, **RESULTS_PAGE)
         self.assertIn("<h1>DF95 2026</h1>", page)
-        self.assertIn("<h2>Final results</h2>", page)
-        self.assertIn("<th>Place</th><th>Sail numbers</th><th>Class</th><th>Name</th>"
-                      "<th>Day 1</th><th>Day 2</th><th>Races</th><th>All races</th><th>Points</th>", page)
+        self.assertIn("<h2>Final results at 16 October 2026</h2>", page)
+        self.assertIn('<th rowspan="2">Name</th>'
+                      '<th colspan="2" class="day">Race<br>05-9</th>'
+                      '<th colspan="2" class="day">Race<br>Day 2</th>'     # no date: its name
+                      '<th colspan="2" class="day">All races</th>'
+                      '<th colspan="2" class="day">Best 2</th></tr>', page)
+        self.assertEqual(page.count('<th class="sub">Heats</th><th class="sub">Points</th>'), 4)
+        self.assertIn('<td class="heats">2</td><td class="num">5</td>'      # Bob: all races,
+                      '<td class="heats">2</td><td class="points">5</td></tr>', page)  # best 2
         self.assertIn("Only sailors who have sailed 2 races or more", page)
         self.assertIn("1 sailor has not sailed enough races yet.", page)
         self.assertIn("Ann &lt;Smith&gt;", page)
         self.assertIn('<tr><td class="row">1</td><td class="sail">12</td><td>DF95</td>'
-                      '<td>Ann &lt;Smith&gt;</td><td class="num">1</td><td class="num"></td>', page)
+                      '<td>Ann &lt;Smith&gt;</td><td class="heats">1</td><td class="num">1</td>'
+                      '<td class="heats"></td><td class="num"></td>', page)
         self.assertEqual(page.count('<td class="row">2</td>'), 2)
 
     def test_current_results_show_the_average(self):
         current = Results(RESULTS.day_names, 2, RESULTS.competitors[:2], CURRENT)
         page = results_html(current, **RESULTS_PAGE)
-        self.assertIn("<h2>Current results</h2>", page)
-        self.assertIn("<th>Races</th><th>Points</th><th>Average</th></tr>", page)
+        self.assertIn("<h2>Current results at 16 October 2026</h2>", page)
+        self.assertIn('<th rowspan="2">Races</th><th rowspan="2">Points</th>'
+                      '<th rowspan="2">Average</th></tr>', page)
         self.assertIn('<td class="num">2</td><td class="num">5</td><td class="points">2.50</td>', page)
         self.assertIn("Ranked by average points per race sailed", page)
 
     def test_all_races_column_only_when_some_are_dropped(self):
         page = results_html(Results(["Day 1"], None, []), **RESULTS_PAGE)
         self.assertNotIn("All races", page)
+        self.assertNotIn('<p class="note">', page)               # nothing to say: no note
         self.assertIn("No results yet.", page)
+
+    def test_abridged_has_only_the_totals(self):
+        page = results_html(RESULTS, abridged=True, **RESULTS_PAGE)
+        self.assertIn('<thead><tr><th rowspan="2">Place</th>', page)
+        self.assertIn('<th rowspan="2">Name</th><th colspan="2" class="day">All races</th>'
+                      '<th colspan="2" class="day">Best 2</th></tr>\n<tr>'
+                      '<th class="sub">Heats</th><th class="sub">Points</th>'
+                      '<th class="sub">Heats</th><th class="sub">Points</th></tr></thead>', page)
+        self.assertNotIn("Race<br>", page)
+        self.assertIn('<td>Ann &lt;Smith&gt;</td><td class="heats">1</td>', page)   # totals next
+        current = results_html(Results(["Day 1"], 2, RESULTS.competitors, CURRENT),
+                               abridged=True, **RESULTS_PAGE)
+        self.assertIn("<thead><tr><th>Place</th>", current)          # one heading row
+        empty = results_html(Results(["Day 1"], None, []), abridged=True, **RESULTS_PAGE)
+        self.assertIn('<td colspan="6">No results yet.</td>', empty)
 
     def test_export_writes_one_file_per_table(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -113,6 +137,9 @@ class ResultsHtmlTests(unittest.TestCase):
             current = export_results_html(Path(tmp) / "out", Results([], None, [], CURRENT),
                                           **RESULTS_PAGE)
             self.assertEqual((final.name, current.name), ("results_final.html", "results_current.html"))
+            abridged = export_results_html(Path(tmp) / "out", RESULTS, abridged=True, **RESULTS_PAGE)
+            self.assertEqual(abridged.name, "results_final_abridged.html")
+            self.assertTrue(final.exists())                    # beside the full table, not over it
             self.assertIn("Cat Brown", final.read_text(encoding="utf-8"))
 
 

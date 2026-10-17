@@ -15,6 +15,7 @@ ALL is every boat ranked by its points, the table the other two are made from.
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass, field
 from fractions import Fraction
 
@@ -34,6 +35,7 @@ class CompetitorResult:
     race_points: list[int] = field(default_factory=list)   # every race sailed, in order
     points: int = 0                  # the races that count (see Results.race_count)
     other_sail_numbers: list[str] = field(default_factory=list)   # the sailor's other boats sailed
+    day_races: list[int] = field(default_factory=list)   # one per race day: races sailed that day
 
     @property
     def sail_numbers(self) -> str:
@@ -62,6 +64,7 @@ class Results:
     competitors: list[CompetitorResult] = field(default_factory=list)
     table: str = ALL                 # ALL, CURRENT or FINAL
     left_out: int = 0                # FINAL: boats with fewer than race_count races
+    day_dates: list[datetime.date | None] = field(default_factory=list)   # each race day's; None: not known
 
     @property
     def title(self) -> str:

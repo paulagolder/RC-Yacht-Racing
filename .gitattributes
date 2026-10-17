@@ -1,0 +1,4 @@
+# Windows batch files need Windows line endings.
+*.bat text eol=crlf
+# Shell scripts need Unix ones.
+*.sh text eol=lf

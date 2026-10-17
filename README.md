@@ -41,7 +41,7 @@ Needs Python 3.9 or newer with tkinter (included with the Windows and macOS inst
 on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
-    python main.py --version         # pyraceresults 1.01 (17 October 2026)
+    python main.py --version         # pyraceresults 1.02 (17 October 2026)
 
 ## Entering sail numbers
 
@@ -100,15 +100,35 @@ Each page is a single file (logo included), ready to email, upload or print.
 into the output folder, in `security/`. See [SECURITY.md](SECURITY.md) for what the program does
 outside its own files and what the findings mean.
 
-## Making a Linux program file
+## Making the program files
+
+Each is a single file with Python included, so it runs on computers without Python installed.
+Data is not part of the program: replacing it with a new build never touches anyone's
+`.pyraceresults` folder.
+
+**Linux** (on Linux):
 
     pipx install pyinstaller         # once
     ./build_linux.sh                 # runs the tests, then builds dist/pyraceresults
 
-`dist/pyraceresults` is a single file with Python included, so it runs on Linux machines without
-Python installed. Copy it anywhere (for example `~/.local/bin`) and run it. It works on the Linux
-version it was built on and newer ones, so build on the oldest one you need. Replacing it with a new
-build never touches anyone's `~/.pyraceresults` data.
+It runs on the Linux version it was built on and newer ones, so build on the oldest one you need.
+
+**Windows** (on Windows, with Python from python.org):
+
+    py -m pip install pyinstaller    # once
+    build_windows.bat                # runs the tests, then builds dist\pyraceresults.exe
+
+The .exe is not code-signed, so Windows may warn "Windows protected your PC": click
+**More info**, then **Run anyway**.
+
+**Both at once, on GitHub**: push a version tag and GitHub builds both (on Ubuntu 22.04 and
+Windows), runs the tests on each, and publishes them as a release to download:
+
+    git tag -a v1.02 -m "pyraceresults 1.02"
+    git push origin v1.02
+
+See `.github/workflows/release.yml`. It can also be run by hand from the Actions tab to check
+the builds without publishing anything.
 
 In the race day window, **Enter**, **Tab** or **Down** moves down the column (adding a row at the bottom until
 there are 15, then moving to the top of the next column); **Shift+Tab** or **Up** goes back.

@@ -1,7 +1,8 @@
 """results.py - a competition's results so far: each boat's races and points.
 
-Worked out by services/scoring.py. A boat is a sail number in a class: the same sail number in
-two classes is two boats. There are two tables:
+Worked out by services/scoring.py. A competitor is a club sailor in a class, whichever of their
+boats (sail numbers) they sailed; a sail number that is not a club sailor's is a competitor of its
+own. The same sail number in two classes is two competitors. There are two tables:
 
     CURRENT   every boat, ranked by its average points per race sailed, however many races
               it has sailed. Fair enough during the season, when not everyone can make every
@@ -26,12 +27,18 @@ TITLES = {ALL: "Results", CURRENT: "Current results", FINAL: "Final results"}
 
 @dataclass
 class CompetitorResult:
-    sail_number: str                 # as shown on screen, without padding
+    sail_number: str                 # the first one sailed, as shown on screen (no padding)
     boat_class: str
     name: str                        # "" if the sail number is not in the club list
     day_points: list[int | None]     # one per race day: points that day, None if not sailed
     race_points: list[int] = field(default_factory=list)   # every race sailed, in order
     points: int = 0                  # the races that count (see Results.race_count)
+    other_sail_numbers: list[str] = field(default_factory=list)   # the sailor's other boats sailed
+
+    @property
+    def sail_numbers(self) -> str:
+        """Every sail number sailed, for showing: '440 / 23'."""
+        return " / ".join([self.sail_number, *self.other_sail_numbers])
 
     @property
     def races(self) -> int:

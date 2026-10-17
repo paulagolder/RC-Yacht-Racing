@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from app.model.competition import Competition, safe_file_name, split_list
@@ -80,6 +81,13 @@ class CompetitionTests(unittest.TestCase):
         add_days(c, 3)
         c.remove_race_day(0)               # leaves "Race day 2", "Race day 3"
         self.assertNotIn(c.next_race_day_name(), ("Race day 2", "Race day 3"))
+
+    def test_default_name_from_the_date(self):
+        c = comp()
+        date = datetime.date(2026, 10, 10)
+        self.assertEqual(c.next_race_day_name(date), "Race Day 10-10-2026")
+        c.add_race_day(RaceDay(c.next_race_day_name(date), date=date))
+        self.assertEqual(c.next_race_day_name(date), "Race Day 10-10-2026 (2)")
 
     def test_replace_and_remove(self):
         c = comp()

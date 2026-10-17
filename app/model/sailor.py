@@ -1,4 +1,8 @@
-"""sailor.py - one club sailor's boat: sail number, boat class, name and club."""
+"""sailor.py - one club sailor's boat: sail number, boat class, name and club.
+
+A sailor may have several boats (several sail numbers) in a class. They can only sail one at a
+time, so in results their sail numbers are alternatives: the same competitor (person_key).
+"""
 
 from __future__ import annotations
 
@@ -31,6 +35,12 @@ class Sailor:
     def key(self) -> tuple[str, str]:
         """Two sailors with the same key are the same boat."""
         return class_key(self.boat_class), sail_key(self.sail_number)
+
+    @property
+    def person_key(self) -> tuple[str, str]:
+        """The same sailor in the same class, whichever of their boats: class and name, ignoring
+        case and spacing. (Two different sailors with the same name in a class are not told apart.)"""
+        return class_key(self.boat_class), " ".join(self.name.split()).casefold()
 
     def problem(self) -> str | None:
         """What is missing from this sailor, or None if nothing is."""

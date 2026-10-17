@@ -3,6 +3,7 @@
 Every race day is open to all of its competition's classes: a sailor in any of them may race.
 The date may be unknown (None), as it is for race days entered before dates were kept. On
 screen dates are day/month/year: parse_date() reads what is typed and format_date() shows it.
+A race day with a date but no name is named from the date: "Race Day 30-12-1978".
 
 On screen and in the file a race day is a table: one column per race, one row per finishing
 place. columns, rows and from_table() give that view of the races.
@@ -11,6 +12,7 @@ place. columns, rows and from_table() give that view of the races.
 from __future__ import annotations
 
 import datetime
+import re
 from dataclasses import dataclass, field
 
 from .limits import DEFAULT_RACES, MAX_PLACES, MAX_RACES
@@ -42,6 +44,16 @@ def format_date(date: datetime.date | None) -> str:
     return date.strftime(DATE_FORMAT) if date else ""
 
 
+def dated_name(date: datetime.date) -> str:
+    """The default name for a race day on this date: 'Race Day 30-12-1978'."""
+    return f"Race Day {date:%d-%m-%Y}"
+
+
+def is_dated_name(name: str) -> bool:
+    """Whether a name is one made from a date ('Race Day 30-12-1978', perhaps with ' (2)')."""
+    return re.fullmatch(r"Race Day \d\d-\d\d-\d{4}( \(\d+\))?", name.strip()) is not None
+
+
 @dataclass
 class RaceDay:
     name: str
@@ -49,17 +61,20 @@ class RaceDay:
     date: datetime.date | None = None        # None: not known
 
     def __post_init__(self):
-        self.name = (self.name or "").strip()
-        if not self.name:
-            raise ValueError("A race day needs a name.")
         if self.date is not None and not isinstance(self.date, datetime.date):
             raise ValueError("A race day's date must be a date.")
+        self.name = (self.name or "").strip() or (dated_name(self.date) if self.date else "")
+        if not self.name:
+            raise ValueError("A race day needs a name or a date.")
         self.set_races(self.races)
 
     @property
     def label(self) -> str:
-        """The name and date, for lists and headings: 'Race day 1 (10/10/2026)'."""
-        return f"{self.name} ({format_date(self.date)})" if self.date else self.name
+        """The name and date, for lists and headings: 'Spring open (10/10/2026)'. A name made
+        from the date already says it, so it is shown on its own."""
+        if not self.date or self.name.startswith(dated_name(self.date)):
+            return self.name
+        return f"{self.name} ({format_date(self.date)})"
 
     @classmethod
     def from_table(cls, name: str, columns, rows, date: datetime.date | None = None) -> RaceDay:

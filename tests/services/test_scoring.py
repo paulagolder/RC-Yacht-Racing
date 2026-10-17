@@ -113,6 +113,17 @@ class CompetitionResultsTests(unittest.TestCase):
                          [("12", 3, 2), ("07", 2, 3)])               # 3 sailed once: left out
         self.assertEqual(results.left_out, 1)
 
+    def test_a_sailors_boats_are_alternatives(self):
+        paul = [Sailor("  440", "DF95", "Paul", "Gutteridge", "RMBC"),
+                Sailor("   23", "DF95", "Paul", " gutteridge ", "RMBC")]   # name matched loosely
+        day1 = day("Race day 1", ["A", "B"], [["440", "12"], ["12", "23"]])
+        day2 = day("Race day 2", ["A"], [["23"]])
+        results = competition_results(competition(day1, day2), MemberList([ANN, *paul]))
+        self.assertEqual([(r.sail_numbers, r.name, r.races, r.points, r.day_points)
+                          for r in results.competitors],
+                         [("12", "Ann Smith", 2, 3, [3, None]),
+                          ("440 / 23", "Paul Gutteridge", 3, 4, [3, 1])])
+
     def test_no_race_days(self):
         results = competition_results(competition(), MEMBERS)
         self.assertEqual((results.day_names, results.competitors), ([], []))

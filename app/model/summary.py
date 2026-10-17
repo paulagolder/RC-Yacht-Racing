@@ -14,14 +14,14 @@ class DaySummary:
     races: int               # races in the table
     races_sailed: int        # races with at least one finisher
     finishes: int            # sail numbers entered
-    boats: int               # different boats that took part
+    boats: int               # different competitors (sailors) that took part
 
 
 @dataclass
 class Leader:
     """One of the leading boats in the current results (by average points per race)."""
     place: int
-    sail_number: str
+    sail_number: str         # every sail number they sailed: '440 / 23'
     boat_class: str
     name: str
     average: float
@@ -37,8 +37,8 @@ class CompetitionSummary:
     race_count: int | None                      # best this many races count; None: all
     max_race_days: int
     days: list[DaySummary] = field(default_factory=list)
-    competitors: int = 0                        # different boats over the whole competition
-    by_class: dict[str, int] = field(default_factory=dict)   # class ("": not a club sailor) -> boats
+    competitors: int = 0                        # different sailors over the whole competition
+    by_class: dict[str, int] = field(default_factory=dict)   # class ("": not a club sailor) -> sailors
     leaders: list[Leader] = field(default_factory=list)      # the first few places
     qualified: int | None = None                # boats with race_count races or more (None: no count)
 

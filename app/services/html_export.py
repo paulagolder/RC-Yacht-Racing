@@ -100,7 +100,7 @@ def results_html(results: Results, *, club_title: str, competition_title: str,
     generated = generated or datetime.datetime.now()
     e = html.escape
     totals = total_columns(results)
-    head = ("<th>Place</th><th>Sail number</th><th>Class</th><th>Name</th>"
+    head = ("<th>Place</th><th>Sail numbers</th><th>Class</th><th>Name</th>"
             + "".join(f"<th>{e(name)}</th>" for name in results.day_names)
             + "".join(f"<th>{e(heading)}</th>" for _, heading in totals))
     last = totals[-1][0]                                    # what the table is ranked by
@@ -110,7 +110,7 @@ def results_html(results: Results, *, club_title: str, competition_title: str,
         values = total_values(r)
         sums = "".join(f'<td class="{"points" if c == last else "num"}">{values[c]}</td>'
                        for c, _ in totals)
-        rows.append(f'<tr><td class="row">{place}</td><td class="sail">{e(r.sail_number)}</td>'
+        rows.append(f'<tr><td class="row">{place}</td><td class="sail">{e(r.sail_numbers)}</td>'
                     f"<td>{e(r.boat_class)}</td><td>{e(r.name)}</td>{days}{sums}</tr>")
     if not rows:
         columns = 4 + len(results.day_names) + len(totals)

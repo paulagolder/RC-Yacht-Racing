@@ -4,7 +4,8 @@ Enter and edit race results for radio-controlled model sailing yachts.
 
 - A **competition** has a name, a year, one or more boat classes and the clubs whose sailors may race,
   and lives in one XML file. It holds up to **15 race days**.
-- A **race day** has a name and a date (typed as day/month/year, today's date for a new one) and is a
+- A **race day** has a date (typed as day/month/year, today's for a new one) and a name, which by
+  default is made from the date ("Race Day 30-12-1978") and follows it until you change it. It is a
   small table: up to **6 races (columns, Race A, Race B ...) and 15 rows**.
 - A competition's classes are typed as a list separated by commas ("DF65, Victoria"); each must be
   one of the classes in `yachtclasses.xml`, typed by its key or full name in any case. They are
@@ -43,21 +44,24 @@ on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
 ## Results so far
 
-In a competition's window, the **Results** button offers two tables. Each has one row per boat (a
-sail number in a class: the same number in two classes is two boats), with its place, its points on
-each race day and how many races it has sailed. A finish earns its place in points (row 1 = 1st =
+In a competition's window, the **Results** button offers two tables. Each has one row per
+competitor: a club sailor in a class, with every sail number they sailed ("440 / 23"). A sailor
+sails one boat at a time, so their boats are alternatives and all their races count together (the
+race day window marks a sailor who appears twice in one race). A sail number that is no club
+sailor's is a competitor of its own. Each row has the place, the points on each race day and how
+many races were sailed. A finish earns its place in points (row 1 = 1st =
 1 point, row 2 = 2 points ...), so fewer is better, and equal scores share a place.
 
-- **Current results**: every boat, ranked by its average points per race sailed, however many
-  races it has sailed. Useful during the season, when not everyone can make every race day.
-- **Final results**: only the boats that have sailed the competition's **races counted**
+- **Current results**: every sailor, ranked by their average points per race sailed, however many
+  races they have sailed. Useful during the season, when not everyone can make every race day.
+- **Final results**: only the sailors who have sailed the competition's **races counted**
   (`racecount`) or more, ranked by the points from their best that many races. It needs races
   counted to be set (Edit in the competitions list).
 
 Click a column heading to sort by it; click it again to reverse.
 
 **Report** gives a short text summary: the number of race days, races sailed and finishes, how many
-different boats have taken part (in each class), how many have qualified for the final results,
+different sailors have taken part (in each class), how many have qualified for the final results,
 each race day's figures and the leading boats in the current results.
 **Save...** writes it to a text file and **Copy** puts it on the clipboard.
 

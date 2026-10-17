@@ -75,10 +75,10 @@ class ResultsHtmlTests(unittest.TestCase):
         page = results_html(RESULTS, **RESULTS_PAGE)
         self.assertIn("<h1>DF95 2026</h1>", page)
         self.assertIn("<h2>Final results</h2>", page)
-        self.assertIn("<th>Place</th><th>Sail number</th><th>Class</th><th>Name</th>"
+        self.assertIn("<th>Place</th><th>Sail numbers</th><th>Class</th><th>Name</th>"
                       "<th>Day 1</th><th>Day 2</th><th>Races</th><th>All races</th><th>Points</th>", page)
-        self.assertIn("Only boats that have sailed 2 races or more", page)
-        self.assertIn("1 boat has not sailed enough races yet.", page)
+        self.assertIn("Only sailors who have sailed 2 races or more", page)
+        self.assertIn("1 sailor has not sailed enough races yet.", page)
         self.assertIn("Ann &lt;Smith&gt;", page)
         self.assertIn('<tr><td class="row">1</td><td class="sail">12</td><td>DF95</td>'
                       '<td>Ann &lt;Smith&gt;</td><td class="num">1</td><td class="num"></td>', page)

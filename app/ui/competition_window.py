@@ -141,7 +141,7 @@ class CompetitionWindow(tk.Toplevel):
         self.results_button.state(["!disabled" if session.competition.race_days else "disabled"])
         count = session.competition.race_count
         self.results_menu.entryconfigure(
-            1, label=(f"Final results (boats with {count} races or more)" if count
+            1, label=(f"Final results (sailors with {count} races or more)" if count
                       else "Final results (set Races counted with Edit first)"),
             state="normal" if count else "disabled")
         for button in (self.edit_button, self.delete_button):
@@ -185,8 +185,9 @@ class CompetitionWindow(tk.Toplevel):
         members = self._load_members()
         if members is None:
             return
-        draft = RaceDay(competition.next_race_day_name(), default_races(self.settings.default_columns),
-                        datetime.date.today())
+        today = datetime.date.today()
+        draft = RaceDay(competition.next_race_day_name(today),
+                        default_races(self.settings.default_columns), today)
         day = RaceDayWindow(self, draft, title=f"{competition.title} - new race day",
                             default_rows=self.settings.default_rows, members=members,
                             **self._race_day_options()).show()

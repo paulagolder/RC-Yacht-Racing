@@ -12,6 +12,19 @@ CAT = Sailor("   12", "VICTORIA", "Cat", "Brown", "RMBC")
 DAN = Sailor("   05", "DF95", "Dan", "Moor", "Other club")
 
 
+class OneBoatAtATimeTests(unittest.TestCase):
+    def test_same_sailor_twice_in_a_race_is_a_problem(self):
+        members = MemberList([Sailor("  440", "DF95", "Paul", "Gutteridge", "RMBC"),
+                              Sailor("   23", "DF95", "Paul", "Gutteridge", "RMBC"), ANN])
+        races = [Race("A", ["440", "12", "23"]), Race("B", ["23", "12"])]
+        self.assertEqual(members.check_races(races, ["DF95"]),
+                         [(2, 0, "Paul Gutteridge is already sailing 440 in row 1 of this race.")])
+
+    def test_person_key_ignores_case_and_spacing(self):
+        self.assertEqual(Sailor("1", "df 95", "Paul ", "GUTTERIDGE").person_key,
+                         Sailor("2", "DF95", "paul", "Gutteridge").person_key)
+
+
 class SailNumberTests(unittest.TestCase):
     def test_keys(self):
         self.assertEqual([sail_key(s) for s in ("   01", "1", "001", " x1 ", "0")],

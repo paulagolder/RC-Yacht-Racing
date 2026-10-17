@@ -3,7 +3,14 @@ import unittest
 
 from app.model.limits import MAX_PLACES, MAX_RACES
 from app.model.race import Race
-from app.model.race_day import RaceDay, default_races, format_date, parse_date
+from app.model.race_day import (
+    RaceDay,
+    dated_name,
+    default_races,
+    format_date,
+    is_dated_name,
+    parse_date,
+)
 
 
 class RaceDayTests(unittest.TestCase):
@@ -98,6 +105,22 @@ class DateTests(unittest.TestCase):
         self.assertEqual(format_date(None), "")
         with self.assertRaises(ValueError):
             RaceDay("d", date="2026-07-03")
+
+    def test_name_from_the_date(self):
+        date = datetime.date(1978, 12, 30)
+        self.assertEqual(dated_name(date), "Race Day 30-12-1978")
+        day = RaceDay(" ", date=date)
+        self.assertEqual(day.name, "Race Day 30-12-1978")
+        self.assertEqual(day.label, "Race Day 30-12-1978")               # the date is not repeated
+        self.assertEqual(RaceDay("Race Day 30-12-1978 (2)", date=date).label, "Race Day 30-12-1978 (2)")
+        with self.assertRaises(ValueError):
+            RaceDay(" ")                                                 # no name and no date
+
+    def test_is_dated_name(self):
+        for name in ("Race Day 30-12-1978", " Race Day 01-02-2026 (3) "):
+            self.assertTrue(is_dated_name(name), name)
+        for name in ("Race day 3", "Race Day 30-12-1978 open", "Spring open", ""):
+            self.assertFalse(is_dated_name(name), name)
 
 
 if __name__ == "__main__":

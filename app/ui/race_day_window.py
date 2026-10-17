@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox, ttk
 from ..model.limits import DEFAULT_ROWS, MAX_PLACES, MAX_RACES
 from ..model.member_list import MemberList, Problem
 from ..model.race import Race, race_name
-from ..model.race_day import RaceDay, format_date, parse_date
+from ..model.race_day import RaceDay, dated_name, format_date, is_dated_name, parse_date
 from ..services.html_export import export_race_day_html
 from ..storage.errors import StorageError
 from .browser import open_in_browser
@@ -75,6 +75,7 @@ class RaceDayWindow(tk.Toplevel):
         self.date_entry = ttk.Entry(top, textvariable=self.date_var, width=11)
         self.date_entry.pack(side="left", padx=6)
         ttk.Label(top, text="dd/mm/yyyy", foreground="gray40").pack(side="left")
+        self.date_var.trace_add("write", lambda *_: self._date_changed())
         if self.classes:
             ttk.Label(top, text="Classes:").pack(side="left", padx=(12, 0))
             ttk.Label(top, text=", ".join(self.classes), font=BOLD).pack(side="left", padx=6)
@@ -207,6 +208,18 @@ class RaceDayWindow(tk.Toplevel):
         """The table as races: one per column, finishers top to bottom."""
         return [Race(name, [row[c].get() for row in self.cells])
                 for c, name in enumerate(self.columns)]
+
+    def _date_changed(self) -> None:
+        """A name that is blank or made from the date follows the date as it is typed."""
+        name = self.name_var.get()
+        if name.strip() and not is_dated_name(name):
+            return
+        try:
+            date = parse_date(self.date_var.get())
+        except ValueError:
+            return                        # not a whole date yet
+        if date is not None:
+            self.name_var.set(dated_name(date))
 
     def _race_day(self, title: str) -> RaceDay | None:
         """The race day as entered, or None (after saying why) if its name or date is wrong."""

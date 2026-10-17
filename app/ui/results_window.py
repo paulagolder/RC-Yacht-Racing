@@ -2,7 +2,8 @@
 
     ResultsWindow(parent, results, title, html_folder=..., club_title=...)
 
-One row per boat (a sail number in a class): its place, its points on each race day, the number
+One row per competitor (a club sailor in a class, with every sail number they sailed; or a
+sail number that is no club sailor's): its place, its points on each race day, the number
 of races sailed and its totals (see services/results_table.py). The current table ranks every
 boat by average points per race; the final table only has the boats that have sailed enough
 races, ranked by points. Click a column heading to sort by it. Export HTML writes the table as a
@@ -54,7 +55,7 @@ class ResultsWindow(tk.Toplevel):
                                                 *(c for c, _ in totals)],
                                  show="headings", selectmode="browse")
         for column_id, heading, width, anchor in (("place", "Place", 50, "center"),
-                                                  ("sail", "Sail number", 90, "w"),
+                                                  ("sail", "Sail numbers", 100, "w"),
                                                   ("class", "Class", 80, "w")):
             self.tree.heading(column_id, text=heading)
             self.tree.column(column_id, width=width, anchor=anchor, stretch=False)
@@ -77,12 +78,12 @@ class ResultsWindow(tk.Toplevel):
         self.tree.pack(side="left", fill="both", expand=True)
 
         if not results.competitors:
-            empty = "No boat has sailed enough races yet." if results.left_out else "No results entered yet."
+            empty = "No one has sailed enough races yet." if results.left_out else "No results entered yet."
             self.tree.insert("", "end", values=["", "", "", empty])
         for place, result in zip(results.places(), results.competitors):
             days = ["" if p is None else p for p in result.day_points]
             values = total_values(result)
-            self.tree.insert("", "end", values=[place, result.sail_number, result.boat_class,
+            self.tree.insert("", "end", values=[place, result.sail_numbers, result.boat_class,
                                                 result.name or "(not a club sailor)", *days,
                                                 *(values[c] for c, _ in totals)])
         self._sorted_by: str | None = "place"    # rows start in place order, as results gives them
@@ -109,7 +110,7 @@ class ResultsWindow(tk.Toplevel):
         def key(item: str):
             value = str(self.tree.set(item, column_id))
             if column_id == "sail":
-                return sort_key(value)
+                return sort_key(value.split(" / ")[0])           # by the first sail number
             if column_id in ("class", "name"):
                 return (0, 0, value.lower())
             return (1, 0, "") if value == "" else (0, float(value), "")  # not sailed goes last

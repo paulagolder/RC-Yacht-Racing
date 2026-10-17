@@ -2,9 +2,11 @@
 
 Each finish scores Race.points(place) (1st = 1 point, 2nd = 2 ...), so fewer points is better.
 A boat's points are the sum of its best competition.race_count races (all of them if the
-competition does not say), over every race day. A boat's class is the class of the club
-sailor with that sail number in one of the competition's classes (the first one, if several),
-or blank if there is none.
+competition does not say), over every race day. A competitor is a club sailor in a class: the
+sailor with that sail number in one of the competition's classes (the first one, if several).
+A sailor with several boats sails one at a time, so their sail numbers are alternatives and
+all their races count together. A sail number that is no club sailor's is a competitor of its
+own, with a blank class.
 
 competition_results gives every boat, ranked by points. From it:
 
@@ -39,12 +41,16 @@ def competition_results(competition: Competition, members: MemberList | None = N
                 sailors = members.find_in(number, classes, competition.clubs) if members else []
                 sailor = sailors[0] if sailors else None
                 boat_class = _class_name(sailor.boat_class, classes) if sailor else ""
-                key = (class_key(boat_class), sail_key(number))
+                key = sailor.person_key if sailor else ("", sail_key(number))
+                shown = sailor.number if sailor else number.strip()
                 result = found.get(key)
                 if result is None:
-                    result = CompetitorResult(sailor.number if sailor else number, boat_class,
+                    result = CompetitorResult(shown, boat_class,
                                               sailor.name if sailor else "", [None] * len(days))
                     found[key] = result
+                elif sail_key(shown) not in {sail_key(n) for n in
+                                             [result.sail_number, *result.other_sail_numbers]}:
+                    result.other_sail_numbers.append(shown)
                 points = Race.points(place)
                 result.day_points[d] = (result.day_points[d] or 0) + points
                 result.race_points.append(points)

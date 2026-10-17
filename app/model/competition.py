@@ -11,12 +11,13 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, field
 
 from .boat_class import class_key
 from .limits import MAX_RACE_DAYS, MAX_YEAR, MIN_YEAR
-from .race_day import RaceDay
+from .race_day import RaceDay, dated_name
 
 
 def safe_file_name(text: str, fallback: str) -> str:
@@ -69,9 +70,16 @@ class Competition:
     def has_class(self, boat_class: str) -> bool:
         return class_key(boat_class) in {class_key(c) for c in self.classes}
 
-    def next_race_day_name(self) -> str:
-        """A default name ('Race day 3') that no existing race day is using."""
+    def next_race_day_name(self, date: datetime.date | None = None) -> str:
+        """A default name that no existing race day is using: 'Race Day 30-12-1978' for a date
+        ('Race Day 30-12-1978 (2)' if that is taken), or else 'Race day 3'."""
         taken = {d.name for d in self.race_days}
+        if date is not None:
+            name, n = dated_name(date), 2
+            candidate = name
+            while candidate in taken:
+                candidate, n = f"{name} ({n})", n + 1
+            return candidate
         n = len(self.race_days) + 1
         while f"Race day {n}" in taken:
             n += 1

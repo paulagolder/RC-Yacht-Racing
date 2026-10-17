@@ -2,7 +2,7 @@
 
     text = summary_text(competition_summary(competition, results, class_names))
 
-The summary gives the number of race days, races and finishes, how many different boats have
+The summary gives the number of race days, races and finishes, how many different sailors have
 taken part (in each class), each race day's figures, how many boats have sailed enough races
 for the final results, and the leading boats in the current results.
 """
@@ -37,7 +37,7 @@ def competition_summary(competition: Competition, results: Results,
     for r in results.competitors:
         summary.by_class[r.boat_class] = summary.by_class.get(r.boat_class, 0) + 1
     current = current_results(results)
-    summary.leaders = [Leader(place, r.sail_number, r.boat_class, r.name, float(r.average), r.races)
+    summary.leaders = [Leader(place, r.sail_numbers, r.boat_class, r.name, float(r.average), r.races)
                        for place, r in zip(current.places(), current.competitors)
                        if place <= LEADERS]
     if competition.race_count:
@@ -58,7 +58,7 @@ def summary_text(summary: CompetitionSummary, generated: datetime.datetime | Non
              f"Race days:    {len(summary.days)} (of {summary.max_race_days})",
              f"Races sailed: {summary.races_sailed} (of {summary.races} in the tables)",
              f"Finishes:     {summary.finishes}",
-             f"Competitors:  {summary.competitors} different boats"]
+             f"Competitors:  {summary.competitors} different sailors"]
     for boat_class in sorted(summary.by_class, key=lambda c: (c == "", c.upper())):
         lines.append(f"    {boat_class or NOT_A_CLUB_SAILOR}: {summary.by_class[boat_class]}")
     if summary.qualified is not None:
@@ -67,8 +67,8 @@ def summary_text(summary: CompetitionSummary, generated: datetime.datetime | Non
 
     if summary.days:
         width = max(len("Race day"), *(len(d.name) for d in summary.days))
-        lines += ["", f"{'Race day':<{width}}  Races  Boats  Finishes"]
-        lines += [f"{d.name:<{width}}  {d.races_sailed:>5}  {d.boats:>5}  {d.finishes:>8}"
+        lines += ["", f"{'Race day':<{width}}  Races  Sailors  Finishes"]
+        lines += [f"{d.name:<{width}}  {d.races_sailed:>5}  {d.boats:>7}  {d.finishes:>8}"
                   for d in summary.days]
     else:
         lines += ["", "No race days yet."]

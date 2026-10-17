@@ -34,11 +34,11 @@ def results_note(results: Results) -> str:
         if results.race_count:
             note += f" Final results will count each boat's best {results.race_count} races."
     elif results.table == FINAL and results.race_count:
-        note += (f" Only boats that have sailed {results.race_count} races or more, ranked by "
+        note += (f" Only sailors who have sailed {results.race_count} races or more, ranked by "
                  f"their best {results.race_count}.")
         if results.left_out:
-            boats = "boat has" if results.left_out == 1 else "boats have"
-            note += f" {results.left_out} {boats} not sailed enough races yet."
+            sailors = "sailor has" if results.left_out == 1 else "sailors have"
+            note += f" {results.left_out} {sailors} not sailed enough races yet."
     elif results.race_count and results.table in (ALL, FINAL):
         note += f" Each boat's best {results.race_count} races count."
     return note

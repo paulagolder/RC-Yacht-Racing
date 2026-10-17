@@ -90,21 +90,33 @@ class MemberList:
         """Problems in a race day's results, in table order. Empty places are allowed.
 
         A finish is wrong if its sail number is not that of a sailor in one of classes (from
-        one of clubs, if given), or if the same sail number is already further up the same race.
-        A number that is a sailor's in more than one of the classes is accepted for now.
+        one of clubs, if given), if the same sail number is already further up the same race,
+        or if the sailor is already further up the race with another of their boats (a sailor
+        sails one boat at a time). A number that is a sailor's in more than one of the classes
+        is accepted for now.
         """
         from_clubs = f" from {', '.join(clubs)}" if clubs else ""
         problems = []
         for c, race in enumerate(races):
             seen: dict[str, int] = {}             # sail number -> row first seen
+            sailing: dict[tuple[str, str], tuple[int, str]] = {}   # person -> (row, sail number)
             for place, value in race.places():
                 r = place - 1
-                if not self.find_in(value, classes, clubs):
+                sailors = self.find_in(value, classes, clubs)
+                if not sailors:
                     problems.append((r, c, f"No {' or '.join(classes)} sailor{from_clubs} has "
                                            f"sail number '{value}'."))
-                elif sail_key(value) in seen:
+                    continue
+                if sail_key(value) in seen:
                     problems.append((r, c, f"Sail number '{value}' is already in row "
                                            f"{seen[sail_key(value)] + 1} of this race."))
+                    continue
+                seen[sail_key(value)] = r
+                sailor = sailors[0]
+                if sailor.person_key in sailing:
+                    row, number = sailing[sailor.person_key]
+                    problems.append((r, c, f"{sailor.name} is already sailing {number.strip()} in "
+                                           f"row {row + 1} of this race."))
                 else:
-                    seen[sail_key(value)] = r
+                    sailing[sailor.person_key] = (r, value)
         return sorted(problems)

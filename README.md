@@ -68,7 +68,7 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
         models.py           Competition and RaceDay, with all the rules and limits (no GUI)
         storage.py          reads and writes the XML file (no GUI)
         session.py          an open file: every change is saved at once, and undone if saving fails (no GUI)
-        table_entry.py      the race day table window
+        race_day_window.py  the race day table window
         dialogs.py          the New competition window
         settings.py         the data folder and properties.xml (no GUI)
         members.py          club sailors in RMBCSail.xml, and checking sail numbers (no GUI)

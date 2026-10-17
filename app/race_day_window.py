@@ -1,6 +1,6 @@
-"""table_entry.py - the window for entering or editing one race day's table.
+"""race_day_window.py - the window for entering or editing one race day's table.
 
-    result = TableEntry(parent, race_day).show()
+    result = RaceDayWindow(parent, race_day).show()
     if result is not None:
         name, columns, rows = result
 
@@ -51,7 +51,7 @@ def _without_trailing_blank_rows(rows: list[list[str]]) -> list[list[str]]:
     return rows
 
 
-class TableEntry(tk.Toplevel):
+class RaceDayWindow(tk.Toplevel):
     def __init__(self, parent: tk.Tk | tk.Toplevel, race_day: RaceDay, title: str = "Edit race day",
                  default_rows: int = DEFAULT_ROWS, members: MemberList | None = None,
                  boat_class: str = "", html_folder: Path | None = None,

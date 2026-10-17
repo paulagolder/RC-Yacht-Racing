@@ -14,12 +14,12 @@ from typing import Callable
 
 from .members import MemberList, load_members
 from .models import MAX_RACE_DAYS, RaceDay, default_columns
+from .race_day_window import RaceDayWindow
 from .results import competition_results
 from .results_window import ResultsWindow
 from .session import CompetitionSession
 from .settings import Settings
 from .storage import StorageError
-from .table_entry import TableEntry
 
 
 class CompetitionWindow(tk.Toplevel):
@@ -164,10 +164,10 @@ class CompetitionWindow(tk.Toplevel):
         if members is None:
             return
         draft = RaceDay(competition.next_race_day_name(), default_columns(self.settings.default_columns))
-        result = TableEntry(self, draft, title=f"{competition.title} - new race day",
-                            default_rows=self.settings.default_rows, members=members,
-                            boat_class=competition.boat_class,
-                            **self._export_options()).show()
+        result = RaceDayWindow(self, draft, title=f"{competition.title} - new race day",
+                               default_rows=self.settings.default_rows, members=members,
+                               boat_class=competition.boat_class,
+                               **self._export_options()).show()
         if result is None:
             return
         try:
@@ -184,10 +184,10 @@ class CompetitionWindow(tk.Toplevel):
             if members is None:
                 return "break"
             day = session.competition.race_days[index]
-            result = TableEntry(self, day, title=f"{session.competition.title} - {day.name}",
-                                default_rows=self.settings.default_rows, members=members,
-                                boat_class=session.competition.boat_class,
-                                **self._export_options()).show()
+            result = RaceDayWindow(self, day, title=f"{session.competition.title} - {day.name}",
+                                   default_rows=self.settings.default_rows, members=members,
+                                   boat_class=session.competition.boat_class,
+                                   **self._export_options()).show()
             if result is not None:
                 try:
                     session.update_race_day(index, *result)

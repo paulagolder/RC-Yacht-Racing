@@ -1,58 +1,128 @@
 import unittest
 
-from app.model.competition import Competition
+from app.model.competition import Competition, safe_file_name, split_list
 from app.model.limits import MAX_RACE_DAYS
-from app.model.race_day import RaceDay
+from app.model.race_day import RaceDay, default_races
 
 
-def add_days(comp: Competition, count: int) -> None:
+def comp(**changes) -> Competition:
+    details = dict(name="Victoria DF65 2026", year=2026, classes=["DF65", "Victoria"],
+                   clubs=["RMBC"], race_count=24, directory="Victoria2026")
+    details.update(changes)
+    return Competition(**details)
+
+
+def day(name: str, boat_class: str = "") -> RaceDay:
+    return RaceDay(name, default_races(2), boat_class)
+
+
+def add_days(competition: Competition, count: int) -> None:
     for _ in range(count):
-        comp.add_race_day(RaceDay(comp.next_race_day_name()))
+        competition.add_race_day(day(competition.next_race_day_name()))
+
+
+class HelperTests(unittest.TestCase):
+    def test_split_list(self):
+        self.assertEqual(split_list(" df65, victoria ,,"), ["df65", "victoria"])
+        self.assertEqual(split_list(""), [])
+
+    def test_safe_file_name(self):
+        self.assertEqual(safe_file_name("DF65 / IOM 2026", "x"), "DF65_IOM_2026")
+        self.assertEqual(safe_file_name("../..", "x"), "x")
 
 
 class CompetitionTests(unittest.TestCase):
-    def test_title(self):
-        self.assertEqual(Competition(" DF95 ", 2026).title, "DF95 2026")
+    def test_details(self):
+        c = comp(name="  Victoria_df65_competition_2026 ", classes=[" df65", "victoria", "DF 65"],
+                 clubs=["RMBC", "rmbc", " "])
+        self.assertEqual(c.title, "Victoria_df65_competition_2026")
+        self.assertEqual(c.classes, ["df65", "victoria"])           # repeats and blanks dropped
+        self.assertEqual(c.clubs, ["RMBC"])
+        self.assertEqual((c.race_count, c.directory), (24, "Victoria2026"))
+
+    def test_optional_details(self):
+        c = Competition("DF95 2026", 2026, ["DF95"])
+        self.assertEqual((c.clubs, c.race_count, c.directory), ([], None, "DF95_2026"))
+
+    def test_directory_is_a_single_safe_folder_name(self):
+        self.assertEqual(comp(directory="../../etc").directory, "etc")
+        self.assertEqual(comp(directory=" ").directory, "Victoria_DF65_2026")
 
     def test_validation(self):
-        for cls, year in (("", 2026), ("  ", 2026), ("DF95", "2026"), ("DF95", 1800),
-                          ("DF95", 3000), ("DF95", True), ("DF95", 2026.5)):
-            with self.subTest(cls=cls, year=year):
+        for changes in ({"name": " "}, {"year": "2026"}, {"year": 1800}, {"year": True},
+                        {"year": 2026.5}, {"classes": []}, {"classes": [" "]},
+                        {"race_count": 0}, {"race_count": "24"}, {"race_count": True}):
+            with self.subTest(changes=changes):
                 with self.assertRaises(ValueError):
-                    Competition(cls, year)
+                    comp(**changes)
 
-    def test_too_many_race_days_given(self):
+    def test_has_class_ignores_case_and_spaces(self):
+        self.assertTrue(comp().has_class("df 65"))
+        self.assertFalse(comp().has_class("IOM"))
+
+    def test_race_day_class_must_be_one_of_the_competitions(self):
+        c = comp()
+        c.add_race_day(day("DF65 day", "df65"))
+        c.add_race_day(day("Open day"))
+        bad = day("IOM day", "IOM")
         with self.assertRaises(ValueError):
-            Competition("DF95", 2026, [RaceDay(f"d{i}") for i in range(MAX_RACE_DAYS + 1)])
+            c.add_race_day(bad)
+        with self.assertRaises(ValueError):
+            c.replace_race_day(0, bad)
+        self.assertEqual([d.name for d in c.race_days], ["DF65 day", "Open day"])
+        with self.assertRaises(ValueError):
+            comp(race_days=[bad])
+
+    def test_class_name(self):
+        self.assertEqual(comp().class_name("VICTORIA"), "Victoria")
+        self.assertEqual(comp().class_name("IOM"), "IOM")
+
+    def test_day_classes_inherit_the_competitions(self):
+        c = comp()
+        self.assertEqual(c.day_classes(day("d")), ["DF65", "Victoria"])
+        self.assertEqual(c.day_classes(day("d", "Victoria")), ["Victoria"])
 
     def test_at_most_15_race_days(self):
-        comp = Competition("DF95", 2026)
-        add_days(comp, MAX_RACE_DAYS)
-        self.assertTrue(comp.is_full)
+        c = comp()
+        add_days(c, MAX_RACE_DAYS)
+        self.assertTrue(c.is_full)
         with self.assertRaises(ValueError):
-            comp.add_race_day(RaceDay("One too many"))
-        self.assertEqual(len(comp.race_days), MAX_RACE_DAYS)
+            c.add_race_day(day("One too many"))
+        self.assertEqual(len(c.race_days), MAX_RACE_DAYS)
+        with self.assertRaises(ValueError):
+            comp(race_days=[day(f"d{i}") for i in range(MAX_RACE_DAYS + 1)])
 
     def test_add_returns_the_index(self):
-        comp = Competition("DF95", 2026)
-        self.assertEqual(comp.add_race_day(RaceDay("a")), 0)
-        self.assertEqual(comp.add_race_day(RaceDay("b")), 1)
+        c = comp()
+        self.assertEqual(c.add_race_day(day("a")), 0)
+        self.assertEqual(c.add_race_day(day("b")), 1)
 
     def test_default_names_are_unique_after_deleting(self):
-        comp = Competition("DF95", 2026)
-        add_days(comp, 3)
-        comp.remove_race_day(0)               # leaves "Race day 2", "Race day 3"
-        name = comp.next_race_day_name()
-        self.assertNotIn(name, ("Race day 2", "Race day 3"))
+        c = comp()
+        add_days(c, 3)
+        c.remove_race_day(0)               # leaves "Race day 2", "Race day 3"
+        self.assertNotIn(c.next_race_day_name(), ("Race day 2", "Race day 3"))
 
     def test_replace_and_remove(self):
-        comp = Competition("DF95", 2026)
-        add_days(comp, 2)
-        spring = RaceDay("Spring open")
-        comp.replace_race_day(0, spring)
-        self.assertIs(comp.race_days[0], spring)
-        self.assertIs(comp.remove_race_day(0), spring)
-        self.assertEqual([d.name for d in comp.race_days], ["Race day 2"])
+        c = comp()
+        add_days(c, 2)
+        spring = day("Spring open")
+        c.replace_race_day(0, spring)
+        self.assertIs(c.race_days[0], spring)
+        self.assertIs(c.remove_race_day(0), spring)
+        self.assertEqual([d.name for d in c.race_days], ["Race day 2"])
+
+    def test_with_details_keeps_the_race_days(self):
+        c = comp()
+        add_days(c, 1)
+        c.add_race_day(day("DF65 day", "DF65"))
+        changed = c.with_details(comp(name="Renamed", race_count=None))
+        self.assertEqual((changed.name, changed.race_count), ("Renamed", None))
+        self.assertEqual(changed.race_days, c.race_days)
+        self.assertTrue(changed.same_details(comp(name="Renamed", race_count=None)))
+        self.assertFalse(changed.same_details(c))
+        with self.assertRaises(ValueError):             # DF65 races, but DF65 taken out
+            c.with_details(comp(classes=["Victoria"]))
 
 
 if __name__ == "__main__":

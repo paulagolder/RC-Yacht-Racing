@@ -1,4 +1,7 @@
-"""race_day.py - one day's racing: a name and up to MAX_RACES races.
+"""race_day.py - one day's racing: a name, a boat class and up to MAX_RACES races.
+
+Every race in the day is sailed by the day's class. A day with no class ("") inherits the
+competition's classes: a sailor in any of them may race.
 
 On screen and in the file a race day is a table: one column per race, one row per finishing
 place. columns, rows and from_table() give that view of the races.
@@ -20,17 +23,19 @@ def default_races(count: int = DEFAULT_RACES) -> list[Race]:
 class RaceDay:
     name: str
     races: list[Race] = field(default_factory=default_races)
+    boat_class: str = ""             # "": the competition's classes
 
     def __post_init__(self):
         self.name = (self.name or "").strip()
         if not self.name:
             raise ValueError("A race day needs a name.")
+        self.boat_class = (self.boat_class or "").strip()
         self.set_races(self.races)
 
     @classmethod
-    def from_table(cls, name: str, columns, rows) -> RaceDay:
+    def from_table(cls, name: str, columns, rows, boat_class: str = "") -> RaceDay:
         """A race day from a table: column names, and rows of cells (row 1 = 1st place)."""
-        day = cls(name)
+        day = cls(name, boat_class=boat_class)
         day.set_table(columns, rows)
         return day
 

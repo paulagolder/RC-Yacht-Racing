@@ -12,7 +12,11 @@ from app.storage.errors import StorageError
 
 
 def day(name: str, columns, rows) -> RaceDay:
-    return RaceDay.from_table(name, columns, rows)
+    return RaceDay.from_table(name, columns, rows, "DF95")
+
+
+def df95() -> Competition:
+    return Competition("DF95 2026", 2026, ["DF95"])
 
 
 class SessionTests(unittest.TestCase):
@@ -20,14 +24,14 @@ class SessionTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name) / "DF95_2026.xml"
-        self.session = CompetitionSession.create(Competition("DF95", 2026), self.path)
+        self.session = CompetitionSession.create(df95(), self.path)
 
     def on_disk(self) -> Competition:
         return load_competition(self.path)
 
     def test_create_writes_the_file(self):
         self.assertTrue(self.path.exists())
-        self.assertEqual(self.on_disk(), Competition("DF95", 2026))
+        self.assertEqual(self.on_disk(), df95())
 
     def test_open_existing(self):
         self.session.add_race_day(day("Day 1", ["A"], [["x"]]))
@@ -63,12 +67,23 @@ class SessionTests(unittest.TestCase):
         self.assertEqual([(d.name, d.columns, d.rows) for d in self.session.competition.race_days],
                          snapshot)
 
+    def test_race_in_another_class_changes_nothing(self):
+        self.session.add_race_day(day("Day 1", ["A"], [["1"]]))
+        before = self.path.read_bytes()
+        iom = RaceDay.from_table("IOM day", ["A"], [["1"]], "IOM")
+        with self.assertRaises(ValueError):
+            self.session.add_race_day(iom)
+        with self.assertRaises(ValueError):
+            self.session.update_race_day(0, iom)
+        self.assertEqual([d.name for d in self.session.competition.race_days], ["Day 1"])
+        self.assertEqual(self.path.read_bytes(), before)
+
     def test_cannot_exceed_race_day_limit(self):
         for _ in range(MAX_RACE_DAYS):
-            self.session.add_race_day(RaceDay(self.session.competition.next_race_day_name()))
+            self.session.add_race_day(day(self.session.competition.next_race_day_name(), ["A"], []))
         before = self.path.read_bytes()
         with self.assertRaises(ValueError):
-            self.session.add_race_day(RaceDay("One too many"))
+            self.session.add_race_day(day("One too many", ["A"], []))
         self.assertEqual(len(self.session.competition.race_days), MAX_RACE_DAYS)
         self.assertEqual(self.path.read_bytes(), before)
 

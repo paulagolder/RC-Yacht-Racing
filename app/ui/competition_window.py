@@ -105,11 +105,15 @@ class CompetitionWindow(tk.Toplevel):
         self.listbox.delete(0, tk.END)
         session = self.session
         days = session.competition.race_days
-        self.title_var.set(session.competition.title)
-        self.path_var.set(str(session.path))
+        competition = session.competition
+        self.title_var.set(competition.title)
+        clubs = ", ".join(competition.clubs) or "any club"
+        counted = (f"best {competition.race_count} races count" if competition.race_count
+                   else "every race counts")
+        self.path_var.set(f"{', '.join(competition.classes)} · {clubs} · {counted}\n{session.path}")
         self.days_frame.configure(text=f"Race days ({len(days)} of {MAX_RACE_DAYS})")
         for day in days:
-            self.listbox.insert(tk.END, day.name)
+            self.listbox.insert(tk.END, f"{day.name} ({day.boat_class})" if day.boat_class else day.name)
         if days and select is not None:
             index = min(max(select, 0), len(days) - 1)
             self.listbox.selection_set(index)
@@ -150,7 +154,8 @@ class CompetitionWindow(tk.Toplevel):
             tree.column(column_id, width=110, anchor="w")
         for number, row in enumerate(day.rows, start=1):
             tree.insert("", "end", values=[number, *row])
-        self.preview_frame.configure(text=day.name)
+        classes = ", ".join(self.session.competition.day_classes(day))
+        self.preview_frame.configure(text=f"{day.name} ({classes})")
 
     # -- race days --------------------------------------------------------------------------
 
@@ -167,8 +172,7 @@ class CompetitionWindow(tk.Toplevel):
         draft = RaceDay(competition.next_race_day_name(), default_races(self.settings.default_columns))
         day = RaceDayWindow(self, draft, title=f"{competition.title} - new race day",
                             default_rows=self.settings.default_rows, members=members,
-                            boat_class=competition.boat_class,
-                            **self._export_options()).show()
+                            **self._race_day_options()).show()
         if day is None:
             return
         try:
@@ -187,12 +191,11 @@ class CompetitionWindow(tk.Toplevel):
             day = session.competition.race_days[index]
             edited = RaceDayWindow(self, day, title=f"{session.competition.title} - {day.name}",
                                    default_rows=self.settings.default_rows, members=members,
-                                   boat_class=session.competition.boat_class,
-                                   **self._export_options()).show()
+                                   **self._race_day_options()).show()
             if edited is not None:
                 try:
                     session.update_race_day(index, edited)
-                except StorageError as exc:
+                except (ValueError, StorageError) as exc:
                     messagebox.showerror("Cannot save", str(exc), parent=self)
                 self._refresh(select=index)
         return "break"
@@ -206,11 +209,12 @@ class CompetitionWindow(tk.Toplevel):
         competition = self.session.competition
         ResultsWindow(self, competition_results(competition, members), competition.title)
 
-    def _export_options(self) -> dict:
-        """Where and how the race day window's Export HTML writes: a folder for this competition."""
-        return {"html_folder": self.settings.output_dir / self.session.path.stem,
-                "competition_title": self.session.competition.title,
-                "club_title": self.settings.title}
+    def _race_day_options(self) -> dict:
+        """The competition's classes and clubs, and where the race day window's Export HTML writes."""
+        competition = self.session.competition
+        return {"classes": competition.classes, "clubs": competition.clubs,
+                "html_folder": self.settings.output_dir / competition.directory,
+                "competition_title": competition.title, "club_title": self.settings.title}
 
     def _load_members(self) -> MemberList | None:
         """Read the club's sail numbers afresh, so changes to the file are picked up."""

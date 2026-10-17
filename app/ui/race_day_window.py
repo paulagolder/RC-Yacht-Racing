@@ -6,9 +6,10 @@ Enter, Tab and Down move down the column; at the bottom the table grows by a row
 reaches MAX_PLACES, after which the cursor moves to the top of the next column. Shift+Tab and
 Up go the other way. The window is modal: the window behind it is blocked until it closes.
 
-Each cell holds a sail number. Given a MemberList, the window shows whose boat the current
-cell is, marks numbers that are not club sailors' in this class (or are repeated in a race),
-and will not save until they are fixed.
+The race day is for one of the competition's classes, or for all of them. Each cell holds a
+sail number. Given a MemberList, the window shows whose boat the current cell is, marks numbers
+that are not sailors' in the day's classes and the competition's clubs (or are repeated in a
+race), and will not save until they are fixed.
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ from .grid_navigation import next_cell_position, previous_cell_position
 
 BOLD = ("TkDefaultFont", 10, "bold")
 BAD_STYLE = "Bad.TEntry"
+ALL_CLASSES = "All classes"
 
 
 def _without_trailing_blank_rows(rows: list[list[str]]) -> list[list[str]]:
@@ -45,8 +47,9 @@ def _without_trailing_blank_rows(rows: list[list[str]]) -> list[list[str]]:
 class RaceDayWindow(tk.Toplevel):
     def __init__(self, parent: tk.Tk | tk.Toplevel, race_day: RaceDay, title: str = "Edit race day",
                  default_rows: int = DEFAULT_ROWS, members: MemberList | None = None,
-                 boat_class: str = "", html_folder: Path | None = None,
-                 competition_title: str = "", club_title: str = ""):
+                 classes: list[str] | None = None, clubs: list[str] | None = None,
+                 html_folder: Path | None = None, competition_title: str = "",
+                 club_title: str = ""):
         super().__init__(parent)
         self._parent = parent
         self.title(title)
@@ -54,7 +57,8 @@ class RaceDayWindow(tk.Toplevel):
         self.transient(parent)
         self.result: RaceDay | None = None
         self.members = members
-        self.boat_class = boat_class
+        self.classes = list(classes or ([race_day.boat_class] if race_day.boat_class else []))
+        self.clubs = list(clubs or [])
         self.html_folder = html_folder              # Export HTML writes here (None: no button)
         self.competition_title = competition_title
         self.club_title = club_title
@@ -70,6 +74,12 @@ class RaceDayWindow(tk.Toplevel):
         self.name_var = tk.StringVar(value=race_day.name)
         self.name_entry = ttk.Entry(top, textvariable=self.name_var, width=28)
         self.name_entry.pack(side="left", padx=6)
+        ttk.Label(top, text="Class:").pack(side="left", padx=(12, 0))
+        self.class_var = tk.StringVar(value=race_day.boat_class or ALL_CLASSES)
+        class_box = ttk.Combobox(top, textvariable=self.class_var, state="readonly", width=14,
+                                 values=[ALL_CLASSES, *self.classes])
+        class_box.pack(side="left", padx=6)
+        class_box.bind("<<ComboboxSelected>>", lambda e: self._mark_problems())
 
         # The table: headers in grid row 0, row numbers in grid column 0
         self.grid_frame = ttk.Frame(self, padding=12)
@@ -200,37 +210,49 @@ class RaceDayWindow(tk.Toplevel):
         return [Race(name, [row[c].get() for row in self.cells])
                 for c, name in enumerate(self.columns)]
 
+    def _boat_class(self) -> str:
+        """The day's class, or "" for all the competition's classes."""
+        value = self.class_var.get()
+        return "" if value == ALL_CLASSES else value
+
+    def _day_classes(self) -> list[str]:
+        return [self._boat_class()] if self._boat_class() else self.classes
+
     def _race_day(self, title: str) -> RaceDay | None:
         """The race day as entered, or None (after saying why) if it has no name."""
         try:
-            return RaceDay(self.name_var.get(), self._races())
+            return RaceDay(self.name_var.get(), self._races(), self._boat_class())
         except ValueError as exc:
             messagebox.showwarning(title, str(exc), parent=self)
             self.name_entry.focus_set()
             return None
 
     def _snapshot(self) -> tuple:
-        return (self.name_var.get(), list(self.columns), _without_trailing_blank_rows(self._values()))
+        return (self.name_var.get(), self.class_var.get(), list(self.columns),
+                _without_trailing_blank_rows(self._values()))
 
     # -- checking sail numbers -------------------------------------------------------------
 
     def _show_sailor(self, entry: ttk.Entry) -> None:
         if self.members is None:
             return
+        classes = " or ".join(self._day_classes())
         value = entry.get().strip()
-        sailor = self.members.find(value, self.boat_class) if value else None
+        sailors = self.members.find_in(value, self._day_classes(), self.clubs) if value else []
         if not value:
-            self.sailor_var.set("Enter a sail number.")
-        elif sailor is not None:
-            self.sailor_var.set(f"{sailor.number}: {sailor.name} ({sailor.club})")
+            self.sailor_var.set(f"Enter a {classes} sail number.")
+        elif sailors:
+            self.sailor_var.set("; ".join(f"{s.number}: {s.name} ({s.boat_class}, {s.club})"
+                                          for s in sailors))
         else:
-            self.sailor_var.set(f"'{value}' is not a club {self.boat_class} sail number.")
+            clubs = f" from {', '.join(self.clubs)}" if self.clubs else ""
+            self.sailor_var.set(f"No {classes} sailor{clubs} has sail number '{value}'.")
 
     def _mark_problems(self) -> list[Problem]:
         """Colour the cells that are wrong, and return the problems."""
         if self.members is None:
             return []
-        problems = self.members.check_races(self._races(), self.boat_class)
+        problems = self.members.check_races(self._races(), self._day_classes(), self.clubs)
         bad = {(r, c) for r, c, _ in problems}
         for r, row in enumerate(self.cells):
             for c, cell in enumerate(row):
@@ -300,7 +322,7 @@ class RaceDayWindow(tk.Toplevel):
             path = export_race_day_html(
                 self.html_folder, day, club_title=self.club_title,
                 competition_title=self.competition_title,
-                members=self.members, boat_class=self.boat_class)
+                members=self.members, classes=self.classes, clubs=self.clubs)
         except StorageError as exc:
             messagebox.showerror("Export HTML", str(exc), parent=self)
             return

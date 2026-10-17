@@ -1,7 +1,9 @@
 """html_export.py - a race day's table as a web page.
 
     path = export_race_day_html(folder, race_day, club_title=..., competition_title=...,
-                                members=..., boat_class=...)
+                                members=..., classes=..., clubs=...)
+
+classes are the classes that may sail in the race day (Competition.day_classes).
 
 The page is a single file (styles and club logo included), so it can be emailed, put on a
 website or printed as it is. Each sail number is shown with its sailor's name when known.
@@ -52,25 +54,28 @@ def _logo_tag() -> str:
     return f'<img src="data:image/png;base64,{data}" alt="">'
 
 
-def _cell(value: str, members: MemberList | None, boat_class: str) -> str:
+def _cell(value: str, members: MemberList | None, classes: list[str], clubs: list[str]) -> str:
     value = value.strip()
     if not value:
         return "<td></td>"
-    sailor = members.find(value, boat_class) if members is not None else None
+    sailors = members.find_in(value, classes, clubs) if members is not None else []
+    sailor = sailors[0] if sailors else None
     name = f'<span class="name">{html.escape(sailor.name)}</span>' if sailor else ""
     return f'<td><span class="sail">{html.escape(value)}</span>{name}</td>'
 
 
 def race_day_html(race_day: RaceDay, *, club_title: str, competition_title: str,
-                  members: MemberList | None = None, boat_class: str = "",
-                  generated: datetime.datetime | None = None) -> str:
+                  members: MemberList | None = None, classes: list[str] | None = None,
+                  clubs: list[str] | None = None, generated: datetime.datetime | None = None) -> str:
     generated = generated or datetime.datetime.now()
     e = html.escape
     day_name = race_day.name
+    classes = [race_day.boat_class] if race_day.boat_class else list(classes or [])
+    subtitle = f"{e(day_name)} &middot; {e(', '.join(classes))}" if classes else e(day_name)
     head = "".join(f"<th>{e(name)}</th>" for name in race_day.columns)
     body = "\n".join(
         f'<tr><td class="row">{number}</td>'
-        + "".join(_cell(value, members, boat_class) for value in row) + "</tr>"
+        + "".join(_cell(value, members, classes, clubs or []) for value in row) + "</tr>"
         for number, row in enumerate(race_day.rows, start=1))
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -85,7 +90,7 @@ def race_day_html(race_day: RaceDay, *, club_title: str, competition_title: str,
 {_logo_tag()}
 <div>
 <h1>{e(competition_title)}</h1>
-<h2>{e(day_name)}</h2>
+<h2>{subtitle}</h2>
 </div>
 </header>
 <table>

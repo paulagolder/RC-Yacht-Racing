@@ -16,7 +16,7 @@ class RaceDayTests(unittest.TestCase):
 
     def test_default_races(self):
         self.assertEqual(RaceDay("d").columns, ["Race A", "Race B", "Race C", "Race D"])
-        self.assertEqual([r.name for r in default_races(2)], ["Race A", "Race B"])
+        self.assertEqual(default_races(2), [Race("Race A"), Race("Race B")])
 
     def test_table_view_of_the_races(self):
         day = RaceDay("d", [Race("A", ["12", "7"]), Race("B", ["7"])])
@@ -25,8 +25,16 @@ class RaceDayTests(unittest.TestCase):
         self.assertEqual(day.races[1].finishers, ["7", ""])          # races are made equal length
 
     def test_from_table(self):
-        day = RaceDay.from_table("d", ["A", "B"], [["12", "7"], ["7", "12"]])
+        day = RaceDay.from_table("d", ["A", "B"], [["12", "7"], ["7", "12"]], "DF65")
         self.assertEqual(day.races, [Race("A", ["12", "7"]), Race("B", ["7", "12"])])
+        self.assertEqual(day.boat_class, "DF65")
+
+    def test_class(self):
+        self.assertEqual(RaceDay("d").boat_class, "")                 # the competition's classes
+        day = RaceDay("d", boat_class=" DF65 ")
+        self.assertEqual(day.boat_class, "DF65")
+        day.set_table(["A"], [["2"]])
+        self.assertEqual(day.boat_class, "DF65")
 
     def test_pads_short_rows_and_stringifies(self):
         day = RaceDay.from_table("d", ["A", "B", "C"], [["x"], [1, 2]])

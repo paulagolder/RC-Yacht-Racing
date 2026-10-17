@@ -2,10 +2,12 @@
 
 Enter and edit race results for radio-controlled model sailing yachts.
 
-- A **competition** is one boat class plus a year (for example *DF95 2026*) and lives in one XML file.
-- A competition holds up to **15 race days**.
+- A **competition** has a name, a year, one or more boat classes and the clubs whose sailors may race,
+  and lives in one XML file. It holds up to **15 race days**.
 - A **race day** is a small table: up to **6 races (columns, Race A, Race B ...) and 15 rows**.
-- Each cell is a **sail number**, which must belong to a club sailor in the competition's class.
+- A race day can be for one of the competition's classes, or (by default) open to all of them.
+  Each cell is a **sail number**, which must belong to a sailor in the race day's classes from one
+  of the competition's clubs.
 
 ## The data folder
 
@@ -15,12 +17,14 @@ Everything lives in `~/.pyraceresults` (created on first run):
   `output_folder`, where **Export HTML** writes (default `~/Documents/raceresult_output`).
 - `RMBCSail.xml`: the club sailors, one `<sail sailnumber="   01" boatclass="DF95" forename=".." surname=".." club="RMBC" />` per boat. Edit it with the
   **File > Club sailors...** menu in the competitions window, then click Save. "Show class" limits the list to one class.
-- Competition files, named like `DF95_2026.cxml`. New competitions are saved here, and every
-  `.cxml` file here is listed in the first window. (File > Open other file opens one from elsewhere.)
+- Competition files, named after the competition, like `Victoria_df65_competition_2026.cxml`.
+  New competitions are saved here, and every `.cxml` file here is listed in the first window.
+  (File > Open other file opens one from elsewhere.)
 
 The first window lists every competition in the data folder. Double-click one (or select it and click
-**Open**) to open it in its own window, or click **New competition**. **Rename...** changes its boat class
-or year; **Delete** takes it off the list (the file is kept as `.cxml.deleted`, rename it back to restore it). In a competition's window, pick a
+**Open**) to open it in its own window, or click **New competition**. **Details...** changes its name,
+year, classes, clubs, races counted or HTML folder (the file is renamed to match the name);
+**Delete** takes it off the list (the file is kept as `.cxml.deleted`, rename it back to restore it). In a competition's window, pick a
 race day and click **Edit** (or double-click it). Saving the race day window writes the competition file
 straight away.
 
@@ -34,16 +38,18 @@ on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
 ## Results so far
 
-In a competition's window, **Generate results** opens a table with one row per competitor: their
-points on each race day, how many races they have sailed and their total points. A finish earns its
-place in points (row 1 = 1st = 1 point, row 2 = 2 points ...). The table starts with the fewest
-points first. Click a column heading to sort by it; click it again to reverse.
+In a competition's window, **Generate results** opens a table with one row per boat (a sail number
+in a class: the same number in two classes is two boats): its points on each race day, how many
+races it has sailed and its points. A finish earns its place in points (row 1 = 1st = 1 point, row
+2 = 2 points ...). If the competition has **races counted** (`racecount`), only each boat's best
+that many races count, and the points from every race are shown too. The table starts with the
+fewest points first. Click a column heading to sort by it; click it again to reverse.
 
 ## Web pages of the results
 
 In the race day window, **Export HTML** writes the table as a web page, with each sailor's name under
-their sail number. It goes in `output_folder` (see properties.xml), in a folder named after the
-competition file, for example `~/Documents/raceresult_output/DF95_2026/Race_day_1.html`. Exporting
+their sail number. It goes in `output_folder` (see properties.xml), in the competition's HTML folder
+(`directory`), for example `~/Documents/raceresult_output/Victoria2026/Race_day_1.html`. Exporting
 the same race day again replaces its page. The page is a single file (logo included), ready to email,
 upload or print.
 
@@ -71,7 +77,7 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             sail_number.py      matching, sorting and writing sail numbers ("1" = "01")
             race.py             Race: its name and finishers in order (place = points)
             race_day.py         RaceDay: a name and its races, also seen as a table
-            competition.py      Competition: boat class, year and race days
+            competition.py      Competition: name, year, classes, clubs, races counted, race days
             sailor.py           Sailor: one club boat
             member_list.py      MemberList: the club sailors, and checking race results against them
             results.py          Results: each competitor's races and points
@@ -87,7 +93,7 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             html_export.py      a race day as a web page
         ui/                     the windows
             front_window.py     the first window: the list of competitions
-            new_competition_dialog.py  asks for a boat class and year
+            competition_dialog.py  asks for a competition's details (New and Details)
             competition_window.py  one competition: its race days and a preview
             race_day_window.py  enter or edit one race day's table
             grid_navigation.py  where Enter/Tab moves to in that table
@@ -102,11 +108,25 @@ needing a screen. To change a limit (races, rows, race days), edit `app/model/li
 
 ## The file
 
-    <competition class="DF95" year="2026" version="1">
-      <raceday name="Race day 1">
-        <columns><column>Race A</column> ...</columns>
-        <row><cell>text</cell> ...</row>
+    <competition year="2026" name="Victoria_df65_competition_2026" racecount="24" clubs="RMBC"
+                 directory="Victoria2026" classes="df65,victoria" version="3">
+      <raceday name="Race day 1" class="df65">
+        <race name="Race A">
+          <sail>12</sail>
+          <sail>7</sail>
+        </race>
+        ...
       </raceday>
     </competition>
+
+A competition holds race days, a race day holds races, and a race holds sail numbers in
+finishing order (the first `<sail>` came 1st). An empty `<sail />` is a place left empty.
+`classes` and `clubs` are lists separated by commas; `racecount` and `clubs` may be left out
+(every race counts; any club). A race day's `class` must be one of the competition's classes;
+a race day without one is open to all of them.
+
+Older files still open and are saved in this layout the next time they change. Versions 1 and 2
+have a single `class="DF95"` and no name (the name becomes "DF95 2026"); version 1 stores each race
+day as a table of `<columns>` and `<row>`s.
 
 Each save keeps the previous version beside it as `DF95_2026.cxml.bak`.

@@ -1,7 +1,7 @@
 """member_list.py - the club's sailors, and checking race results against them.
 
-Every sail number in a race must belong to a club sailor whose boat class is the
-competition's boat class, and may only appear once in each race.
+Every sail number in a race must belong to a sailor in the race day's classes from the
+competition's clubs, and may only appear once in each race.
 """
 
 from __future__ import annotations
@@ -30,9 +30,21 @@ class MemberList:
 
     # -- finding ----------------------------------------------------------------------------
 
-    def find(self, sail_number: str, boat_class: str) -> Sailor | None:
-        """The sailor with this sail number in this class, or None."""
-        return self._index.get((class_key(boat_class), sail_key(sail_number)))
+    def find(self, sail_number: str, boat_class: str, clubs: list[str] | None = None) -> Sailor | None:
+        """The sailor with this sail number in this class, or None.
+
+        Given clubs, only a sailor from one of them is found (none listed: any club).
+        """
+        sailor = self._index.get((class_key(boat_class), sail_key(sail_number)))
+        if sailor is not None and clubs and class_key(sailor.club) not in {class_key(c) for c in clubs}:
+            return None
+        return sailor
+
+    def find_in(self, sail_number: str, classes: list[str],
+                clubs: list[str] | None = None) -> list[Sailor]:
+        """Every sailor with this sail number in any of these classes (from clubs, if given)."""
+        found = (self.find(sail_number, boat_class, clubs) for boat_class in classes)
+        return list(dict.fromkeys(s for s in found if s is not None))
 
     def boat_classes(self) -> list[str]:
         """Every class in the list, as first written, in alphabetical order."""
@@ -73,19 +85,23 @@ class MemberList:
 
     # -- checking results -------------------------------------------------------------------
 
-    def check_races(self, races: list[Race], boat_class: str) -> list[Problem]:
+    def check_races(self, races: list[Race], classes: list[str],
+                    clubs: list[str] | None = None) -> list[Problem]:
         """Problems in a race day's results, in table order. Empty places are allowed.
 
-        A finish is wrong if its sail number is not a club sailor's in this class, or if the
-        same sail number is already further up the same race.
+        A finish is wrong if its sail number is not that of a sailor in one of classes (from
+        one of clubs, if given), or if the same sail number is already further up the same race.
+        A number that is a sailor's in more than one of the classes is accepted for now.
         """
+        from_clubs = f" from {', '.join(clubs)}" if clubs else ""
         problems = []
         for c, race in enumerate(races):
             seen: dict[str, int] = {}             # sail number -> row first seen
             for place, value in race.places():
                 r = place - 1
-                if self.find(value, boat_class) is None:
-                    problems.append((r, c, f"No {boat_class} sailor has sail number '{value}'."))
+                if not self.find_in(value, classes, clubs):
+                    problems.append((r, c, f"No {' or '.join(classes)} sailor{from_clubs} has "
+                                           f"sail number '{value}'."))
                 elif sail_key(value) in seen:
                     problems.append((r, c, f"Sail number '{value}' is already in row "
                                            f"{seen[sail_key(value)] + 1} of this race."))

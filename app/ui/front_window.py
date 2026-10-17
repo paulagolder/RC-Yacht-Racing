@@ -2,8 +2,9 @@
 
 Competition files (*.cxml) in ~/.pyraceresults are listed here. Double-click one (or select it
 and click Open) to open it in its own window; New competition creates a file in the folder.
-Rename changes a competition's class or year (and its file name); Delete takes it off the list
-by renaming the file to .cxml.deleted, so it can be brought back.
+Details changes a competition's name, classes, clubs and so on (and its file name to match the
+name). Delete takes it off the list by renaming the file to .cxml.deleted, so it can be brought
+back.
 """
 
 from __future__ import annotations
@@ -18,18 +19,18 @@ from ..storage.competition_store import (
     delete_competition,
     list_competitions,
     load_competition,
-    rename_competition,
     suggested_filename,
+    update_competition_details,
 )
 from ..storage.errors import StorageError
 from ..storage.settings_store import LOGO_FILE, load_settings
 from .competition_window import CompetitionWindow
-from .new_competition_dialog import NewCompetitionDialog
+from .competition_dialog import CompetitionDialog
 from .sailors_window import SailorsWindow
 
 FILE_TYPES = [("Competition files", f"*{EXTENSION}"), ("Older competition files", "*.xml"),
               ("All files", "*.*")]
-COLUMNS = [("competition", "Competition", 200), ("class", "Boat class", 110), ("year", "Year", 70),
+COLUMNS = [("competition", "Competition", 220), ("classes", "Boat classes", 130), ("year", "Year", 60),
            ("days", "Race days", 80), ("file", "File", 200)]
 
 
@@ -95,8 +96,8 @@ class FrontWindow(tk.Tk):
         self.open_button.pack(side="left", padx=2)
         ttk.Button(buttons, text="New competition...", command=self.new_competition).pack(
             side="left", padx=2)
-        self.rename_button = ttk.Button(buttons, text="Rename...", command=self.rename_selected)
-        self.rename_button.pack(side="left", padx=2)
+        self.details_button = ttk.Button(buttons, text="Details...", command=self.edit_details)
+        self.details_button.pack(side="left", padx=2)
         self.delete_button = ttk.Button(buttons, text="Delete", command=self.delete_selected)
         self.delete_button.pack(side="left", padx=2)
         ttk.Button(buttons, text="Refresh", command=self.refresh).pack(side="left", padx=2)
@@ -117,7 +118,7 @@ class FrontWindow(tk.Tk):
         self.tree.bind("<Double-Button-1>", lambda e: self.open_selected())
         self.tree.bind("<Return>", lambda e: self.open_selected())
         self.tree.bind("<Delete>", lambda e: self.delete_selected())
-        self.tree.bind("<F2>", lambda e: self.rename_selected())
+        self.tree.bind("<F2>", lambda e: self.edit_details())
 
     def _load_logo(self) -> tk.PhotoImage | None:
         try:
@@ -138,7 +139,7 @@ class FrontWindow(tk.Tk):
             if competition is None:
                 values = ("(cannot be read)", "", "", "", path.name)
             else:
-                values = (competition.title, competition.boat_class, competition.year,
+                values = (competition.title, ", ".join(competition.classes), competition.year,
                           len(competition.race_days), path.name)
             item = self.tree.insert("", "end", values=values)
             self._paths.append(path)
@@ -155,7 +156,7 @@ class FrontWindow(tk.Tk):
 
     def _selection_changed(self) -> None:
         index = self._selected_index()
-        for button in (self.open_button, self.rename_button, self.delete_button):
+        for button in (self.open_button, self.details_button, self.delete_button):
             button.state(["!disabled" if index is not None else "disabled"])
         if index is not None:
             self.status_var.set("Click Open (or double-click) to see its race days.")
@@ -198,7 +199,7 @@ class FrontWindow(tk.Tk):
             self.refresh()                # race day counts may have changed
 
     def new_competition(self) -> None:
-        competition = NewCompetitionDialog(self).show()
+        competition = CompetitionDialog(self).show()
         if competition is None:
             return
         path = self.settings.data_dir / suggested_filename(competition)
@@ -216,7 +217,7 @@ class FrontWindow(tk.Tk):
         self.refresh(select=path)
         self.open_path(path)
 
-    # -- renaming and deleting --------------------------------------------------------------
+    # -- changing details and deleting ------------------------------------------------------
 
     def _is_open(self, path: Path, action: str) -> bool:
         window = self._open.get(path.resolve())
@@ -226,32 +227,30 @@ class FrontWindow(tk.Tk):
             return True
         return False
 
-    def rename_selected(self) -> None:
+    def edit_details(self) -> None:
         index = self._selected_index()
         if index is None:
             return
         path = self._paths[index]
-        if self._is_open(path, "Rename competition"):
+        title = "Competition details"
+        if self._is_open(path, title):
             return
         try:
             competition = load_competition(path)
         except StorageError as exc:
-            messagebox.showerror("Rename competition", str(exc), parent=self)
+            messagebox.showerror(title, str(exc), parent=self)
             return
-        renamed = NewCompetitionDialog(self, title="Rename competition",
-                                       boat_class=competition.boat_class,
-                                       year=competition.year).show()
-        if renamed is None or (renamed.boat_class, renamed.year) == (competition.boat_class,
-                                                                     competition.year):
+        details = CompetitionDialog(self, title=title, competition=competition).show()
+        if details is None or details.same_details(competition):
             return
         try:
-            new_path = rename_competition(path, renamed.boat_class, renamed.year)
+            new_path = update_competition_details(path, details)
         except StorageError as exc:
-            messagebox.showerror("Rename competition", str(exc), parent=self)
+            messagebox.showerror(title, str(exc), parent=self)
             self.refresh()
             return
         self.refresh(select=new_path)
-        self.status_var.set(f"Renamed to {renamed.title} ({new_path.name}).")
+        self.status_var.set(f"Saved {details.title} ({new_path.name}).")
 
     def delete_selected(self) -> None:
         index = self._selected_index()

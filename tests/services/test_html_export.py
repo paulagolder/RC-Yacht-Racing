@@ -10,11 +10,11 @@ from app.services.html_export import export_race_day_html, race_day_filename, ra
 
 MEMBERS = MemberList([Sailor("   03", "DF95", "Rosie", "Keel", "RMBC")])
 PAGE = dict(club_title="RMBC <club>", competition_title="DF95 2026", members=MEMBERS,
-            boat_class="DF95", generated=datetime.datetime(2026, 10, 16, 19, 45))
+            clubs=["RMBC"], generated=datetime.datetime(2026, 10, 16, 19, 45))
 
 
-def day(name: str, rows) -> RaceDay:
-    return RaceDay.from_table(name, ["Race A", "Race B"], rows)
+def day(name: str, rows, boat_class: str = "DF95") -> RaceDay:
+    return RaceDay.from_table(name, ["Race A", "Race B"], rows, boat_class)
 
 
 class HtmlExportTests(unittest.TestCase):
@@ -26,12 +26,20 @@ class HtmlExportTests(unittest.TestCase):
     def test_page_contents(self):
         page = race_day_html(day("Day <1>", [["3", ""], ["99", "3"]]), **PAGE)
         self.assertIn("<h1>DF95 2026</h1>", page)
-        self.assertIn("<h2>Day &lt;1&gt;</h2>", page)                 # text is escaped
+        self.assertIn("<h2>Day &lt;1&gt; &middot; DF95</h2>", page)     # text is escaped
         self.assertIn("RMBC &lt;club&gt; &middot; 16 October 2026 19:45", page)
         self.assertIn("<th>Row</th><th>Race A</th><th>Race B</th>", page)
         self.assertEqual(page.count('<span class="name">Rosie Keel</span>'), 2)
         self.assertIn('<td><span class="sail">99</span></td>', page)   # unknown: no name
         self.assertIn('<tr><td class="row">2</td>', page)
+
+    def test_names_use_the_days_classes_and_the_clubs(self):
+        self.assertNotIn("Rosie Keel", race_day_html(day("d", [["3"]], "IOM"), **PAGE))
+        open_day = race_day_html(day("d", [["3"]], ""), **PAGE, classes=["IOM", "DF95"])
+        self.assertIn("Rosie Keel", open_day)
+        self.assertIn("<h2>d &middot; IOM, DF95</h2>", open_day)
+        page = race_day_html(day("d", [["3", "3"]]), **{**PAGE, "clubs": ["Other"]})
+        self.assertNotIn("Rosie Keel", page)
 
     def test_export_makes_folder_and_replaces_page(self):
         with tempfile.TemporaryDirectory() as tmp:

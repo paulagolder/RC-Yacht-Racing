@@ -47,8 +47,9 @@ class SettingsTests(unittest.TestCase):
     def test_output_folder(self):
         self.assertEqual(load_settings(self.dir).output_dir,
                          Path.home() / "Documents" / "raceresult_output")
-        self.write("<properties><output_folder>/srv/results</output_folder></properties>")
-        self.assertEqual(load_settings(self.dir).output_dir, Path("/srv/results"))
+        absolute = Path(self._tmp.name) / "results"      # with its drive letter on Windows
+        self.write(f"<properties><output_folder>{absolute}</output_folder></properties>")
+        self.assertEqual(load_settings(self.dir).output_dir, absolute)
 
     def test_relative_output_folder_is_beside_the_data_folder(self):
         self.write("<properties><output_folder>results</output_folder></properties>")

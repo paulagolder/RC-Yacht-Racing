@@ -41,7 +41,7 @@ Needs Python 3.9 or newer with tkinter (included with the Windows and macOS inst
 on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
     python main.py                   # lists the competitions in ~/.pyraceresults
-    python main.py --version         # pyraceresults 1.02 (17 October 2026)
+    python main.py --version         # pyraceresults 1.03 (17 October 2026)
     python main.py --data FOLDER     # uses another data folder
 
 ## Entering sail numbers
@@ -150,8 +150,8 @@ The .exe is not code-signed, so Windows may warn "Windows protected your PC": cl
 **Both at once, on GitHub**: push a version tag and GitHub builds both (on Ubuntu 22.04 and
 Windows), runs the tests on each, and publishes them as a release to download:
 
-    git tag -a v1.02 -m "pyraceresults 1.02"
-    git push origin v1.02
+    git tag -a v1.03 -m "pyraceresults 1.03"
+    git push origin v1.03
 
 See `.github/workflows/release.yml`. It can also be run by hand from the Actions tab to check
 the builds without publishing anything.

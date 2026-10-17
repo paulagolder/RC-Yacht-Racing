@@ -43,9 +43,9 @@ class MembersFileTests(unittest.TestCase):
 
     def test_tag_is_read_and_defaults_to_the_initials(self):
         (self.dir / MEMBERS_FILE).write_text(
-            '<sails><sail sailnumber="29" boatclass="DF95" forename="Paul" surname="Golder" '
+            '<sails><sail sailnumber="29" boatclass="DF95" forename="Paul" surname="Gale" '
             'club="RMBC" tag="pag" /><sail sailnumber="23" boatclass="DF95" forename="Paul" '
-            'surname="Gutteridge" club="RMBC" /></sails>', encoding="utf-8")
+            'surname="Grundy" club="RMBC" /></sails>', encoding="utf-8")
         self.assertEqual([s.tag for s in load_members(self.dir).sailors], ["PAG", "PG"])
 
     def test_round_trip_keeps_backup(self):

@@ -13,12 +13,12 @@ DAN = Sailor("   05", "DF95", "Dan", "Moor", "Other club")
 
 class PersonTests(unittest.TestCase):
     def test_person_key_ignores_case_and_spacing(self):
-        self.assertEqual(Sailor("1", "df 95", "Paul ", "GUTTERIDGE").person_key,
-                         Sailor("2", "DF95", "paul", "Gutteridge").person_key)
+        self.assertEqual(Sailor("1", "df 95", "Paul ", "GRUNDY").person_key,
+                         Sailor("2", "DF95", "paul", "Grundy").person_key)
 
     def test_tag_defaults_to_the_initials(self):
-        self.assertEqual(Sailor("29", "DF95", "Paul", "Golder").tag, "PG")
-        self.assertEqual(Sailor("29", "DF95", "Paul", "Golder", tag=" pag ").tag, "PAG")
+        self.assertEqual(Sailor("29", "DF95", "Paul", "Gale").tag, "PG")
+        self.assertEqual(Sailor("29", "DF95", "Paul", "Gale", tag=" pag ").tag, "PAG")
         self.assertEqual(Sailor("1", "DF95", "", "Cher").tag, "C")
         self.assertIsNotNone(Sailor("1", "DF95", "A", "B", tag="TOOLONG").problem())
         self.assertIsNotNone(Sailor("1", "DF95", "A", "B", tag="A/B").problem())
@@ -80,13 +80,13 @@ class MemberListTests(unittest.TestCase):
         self.assertIsNotNone(members.check(Sailor("1", "DF95", "", "")))
 
     def test_tags_must_tell_apart_sailors_with_the_same_sail_number(self):
-        golder = Sailor("   29", "DF95", "Paul", "Golder")                        # tag PG
-        members = MemberList([golder])
-        clash = members.check(Sailor("   29", "DF65", "Paul", "Gutteridge"))       # also PG
+        gale = Sailor("   29", "DF95", "Paul", "Gale")                        # tag PG
+        members = MemberList([gale])
+        clash = members.check(Sailor("   29", "DF65", "Paul", "Grundy"))       # also PG
         self.assertIn("tag PG", clash)
-        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Gutteridge", tag="PGU")))
-        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Golder")))   # same sailor
-        self.assertIsNone(members.check(Sailor("   30", "DF65", "Paul", "Gutteridge")))
+        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Grundy", tag="PGU")))
+        self.assertIsNone(members.check(Sailor("   29", "DF65", "Paul", "Gale")))   # same sailor
+        self.assertIsNone(members.check(Sailor("   30", "DF65", "Paul", "Grundy")))
 
     def test_add_replace_remove(self):
         members = MemberList([ANN])

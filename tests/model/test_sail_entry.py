@@ -12,12 +12,12 @@ VIC = BoatClass("victoria", "Victoria", "Va", "*")
 
 ANN65 = Sailor("   12", "DF65", "Ann", "Smith", "RMBC")
 ANN95 = Sailor("   12", "DF95", "Ann", "Smith", "RMBC")             # Ann's other boat, also 12
-GOLDER = Sailor("   29", "DF95", "Paul", "Golder", "RMBC", "PAG")
-GUTTERIDGE = Sailor("   29", "VICTORIA", "Paul", "Gutteridge", "RMBC", "PGU")
+GALE = Sailor("   29", "DF95", "Paul", "Gale", "RMBC", "PAG")
+GRUNDY = Sailor("   29", "VICTORIA", "Paul", "Grundy", "RMBC", "PGU")
 BOB = Sailor("   07", "DF65", "Bob", "Jones", "RMBC")
 CAT = Sailor("   12", "victoria", "Cat", "Brown", "RMBC")             # file names a class by its key
 DAN = Sailor("   05", "DF65", "Dan", "Moor", "Other club")
-MEMBERS = MemberList([ANN65, ANN95, GOLDER, GUTTERIDGE, BOB, CAT, DAN])
+MEMBERS = MemberList([ANN65, ANN95, GALE, GRUNDY, BOB, CAT, DAN])
 
 
 def resolver(*classes: BoatClass, clubs=None) -> SailResolver:
@@ -51,8 +51,8 @@ class CandidateTests(unittest.TestCase):
         self.assertIsNone(r.sailor("12"))
         self.assertEqual(r.sailor("12#"), ANN65)
         self.assertEqual(r.sailor("12*"), CAT)
-        self.assertEqual(r.sailor("29/PAG"), GOLDER)
-        self.assertEqual(r.sailor("29/pgu"), GUTTERIDGE)
+        self.assertEqual(r.sailor("29/PAG"), GALE)
+        self.assertEqual(r.sailor("29/pgu"), GRUNDY)
         self.assertEqual(r.candidates("29/XX"), [])
 
     def test_clubs(self):
@@ -62,7 +62,7 @@ class CandidateTests(unittest.TestCase):
 
 class ChoiceTests(unittest.TestCase):
     def test_different_sailors_get_a_sailor_tag(self):
-        self.assertEqual(resolver().choices("29"), [("29/PAG", GOLDER), ("29/PGU", GUTTERIDGE)])
+        self.assertEqual(resolver().choices("29"), [("29/PAG", GALE), ("29/PGU", GRUNDY)])
 
     def test_the_same_sailor_gets_a_class_tag(self):
         self.assertEqual(resolver(DF65, DF95).choices("12"), [("12#", ANN65), ("12@", ANN95)])

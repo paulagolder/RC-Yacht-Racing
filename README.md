@@ -1,4 +1,4 @@
-# RC Yacht Race Tables
+# RC Yacht Racing
 
 Enter and edit race results for radio-controlled model sailing yachts.
 

@@ -127,23 +127,23 @@ class CompetitionResultsTests(unittest.TestCase):
         self.assertEqual(results.left_out, 1)
 
     def test_a_sailors_boats_are_alternatives(self):
-        paul = [Sailor("  440", "DF95", "Paul", "Gutteridge", "RMBC"),
-                Sailor("   23", "DF95", "Paul", " gutteridge ", "RMBC")]   # name matched loosely
+        paul = [Sailor("  440", "DF95", "Paul", "Grundy", "RMBC"),
+                Sailor("   23", "DF95", "Paul", " grundy ", "RMBC")]   # name matched loosely
         day1 = day("Race day 1", ["A", "B"], [["440", "12"], ["12", "23"]])
         day2 = day("Race day 2", ["A"], [["23"]])
         results = competition_results(competition(day1, day2), MemberList([ANN, *paul]))
         self.assertEqual([(r.sail_numbers, r.name, r.races, r.points, r.day_points)
                           for r in results.competitors],
                          [("12", "Ann Smith", 2, 3, [3, None]),
-                          ("440 / 23", "Paul Gutteridge", 3, 4, [3, 1])])
+                          ("440 / 23", "Paul Grundy", 3, 4, [3, 1])])
 
     def test_tagged_entries_score_their_sailor(self):
-        golder = Sailor("   29", "DF95", "Paul", "Golder", "RMBC", "PAG")
-        gutteridge = Sailor("   29", "IOM", "Paul", "Gutteridge", "RMBC", "PGU")
+        gale = Sailor("   29", "DF95", "Paul", "Gale", "RMBC", "PAG")
+        grundy = Sailor("   29", "IOM", "Paul", "Grundy", "RMBC", "PGU")
         race_day = day("Race day 1", ["A"], [["29/PGU"], ["29/pag"], ["29"]])
-        results = competition_results(competition(race_day), MemberList([golder, gutteridge]))
+        results = competition_results(competition(race_day), MemberList([gale, grundy]))
         self.assertEqual([(r.sail_numbers, r.boat_class, r.name, r.points) for r in results.competitors],
-                         [("29", "IOM", "Paul Gutteridge", 1), ("29", "DF95", "Paul Golder", 2),
+                         [("29", "IOM", "Paul Grundy", 1), ("29", "DF95", "Paul Gale", 2),
                           ("29", "", "", 3)])                 # untagged and ambiguous: unknown
 
     def test_no_race_days(self):

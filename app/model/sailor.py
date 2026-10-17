@@ -21,7 +21,7 @@ MAX_TAG = 4
 
 
 def default_tag(forename: str, surname: str) -> str:
-    """The sailor's initials: 'Paul', 'Golder' -> 'PG'."""
+    """The sailor's initials: 'Paul', 'Gale' -> 'PG'."""
     return "".join(part.strip()[:1] for part in (forename, surname) if part.strip()).upper()
 
 

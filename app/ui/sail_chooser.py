@@ -1,6 +1,6 @@
 """sail_chooser.py - asks which sailor an ambiguous sail number means.
 
-    entry = SailChooser(parent, "12", [("12/PAG", "Paul Golder (DF95, RMBC)"), ...]).show()
+    entry = SailChooser(parent, "12", [("12/PAG", "Paul Gale (DF95, RMBC)"), ...]).show()
 
 Returns the tagged entry chosen ("12/PAG"), or None if cancelled. A choice whose entry is ""
 cannot be tagged (its class has no symbol) and is shown but cannot be picked.

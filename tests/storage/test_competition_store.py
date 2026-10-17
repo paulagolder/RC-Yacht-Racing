@@ -1,3 +1,4 @@
+import datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -146,6 +147,24 @@ class StorageTests(unittest.TestCase):
         self.assertEqual([d.name for d in comp.race_days], ["d", "e"])     # class="..." ignored
         save_competition(comp, self.path)
         self.assertNotIn("class=", self.path.read_text(encoding="utf-8").replace("classes=", ""))
+
+    def test_race_day_date(self):
+        comp = simple("DF95", 2026)
+        comp.add_race_day(RaceDay("Dated", date=datetime.date(2026, 10, 10)))
+        comp.add_race_day(RaceDay("Undated"))
+        save_competition(comp, self.path)
+        text = self.path.read_text(encoding="utf-8")
+        self.assertIn('<raceday name="Dated" date="2026-10-10">', text)
+        self.assertIn('<raceday name="Undated">', text)
+        self.assertEqual([d.date for d in load_competition(self.path).race_days],
+                         [datetime.date(2026, 10, 10), None])
+
+    def test_bad_race_day_date_is_refused(self):
+        xml = ('<competition year="2026" name="x" classes="df65"><raceday name="d" date="10/10/2026">'
+               '<race name="A"/></raceday></competition>')
+        with self.assertRaises(StorageError) as ctx:
+            load_competition(self.write(xml))
+        self.assertIn("10/10/2026", str(ctx.exception))
 
     def test_empty_race_and_competition(self):
         comp = simple("DF95", 2026)

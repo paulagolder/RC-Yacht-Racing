@@ -5,7 +5,7 @@ sail numbers of its finishers in finishing order (the first <sail> came 1st):
 
     <competition year="2026" name="Victoria_df65_competition_2026" racecount="24" clubs="RMBC"
                  directory="Victoria2026" classes="df65,victoria" version="3">
-      <raceday name="Race day 1">
+      <raceday name="Race day 1" date="2026-10-10">
         <race name="Race A">
           <sail>12</sail>
           <sail>7</sail>
@@ -21,6 +21,8 @@ yachtclasses.xml. racecount (the best races that count for each boat) and clubs 
 out, and directory defaults to one made from the name. Every race day is open to all the
 competition's classes.
 
+A race day's date is year-month-day, and may be left out (not known).
+
 An empty <sail/> is a place left empty; the sails after it keep their places. A new
 competition has no race days yet, and a new race has no sails.
 
@@ -32,6 +34,7 @@ from before race days were always open to every class, is ignored.
 
 from __future__ import annotations
 
+import datetime
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -65,7 +68,10 @@ def competition_to_xml(comp: Competition) -> ET.Element:
                        "version": FORMAT_VERSION})
     root = ET.Element("competition", {key: _clean(value) for key, value in attributes.items()})
     for day in comp.race_days:
-        day_el = ET.SubElement(root, "raceday", {"name": _clean(day.name)})
+        day_attributes = {"name": _clean(day.name)}
+        if day.date:
+            day_attributes["date"] = day.date.isoformat()
+        day_el = ET.SubElement(root, "raceday", day_attributes)
         for race in day.races:
             race_el = ET.SubElement(day_el, "race", {"name": _clean(race.name)})
             finishers = list(race.finishers)
@@ -87,6 +93,7 @@ def competition_from_xml(root: ET.Element) -> Competition:
                 day = _race_day_from_table_xml(name, day_el)      # version 1
             else:
                 day = _race_day_from_xml(name, day_el, index)
+            day.date = _date(day_el.get("date"))
             comp.add_race_day(day)
         except ValueError as exc:
             raise StorageError(f"Race day {index}: {exc}") from exc
@@ -121,6 +128,16 @@ def _competition_details(root: ET.Element) -> Competition:
                            root.get("directory", ""))
     except ValueError as exc:
         raise StorageError(str(exc)) from exc
+
+
+def _date(text: str | None) -> datetime.date | None:
+    """A race day's date="2026-10-10"; missing or blank: None. Raises ValueError."""
+    if not (text or "").strip():
+        return None
+    try:
+        return datetime.date.fromisoformat(text.strip())
+    except ValueError:
+        raise ValueError(f"the date '{text}' is not a year-month-day date.") from None
 
 
 def _race_day_from_xml(name: str, day_el: ET.Element, index: int) -> RaceDay:

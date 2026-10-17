@@ -3,11 +3,15 @@
     CompetitionWindow(parent, session, settings, on_close=...)
 
 Pick a race day from the list, and enter or edit its results. Every change is saved to the
-competition file as soon as the race day window is saved.
+competition file as soon as the race day window is saved. The Results button offers the
+current results (every boat, by average points per race) and the final results (only boats
+that have sailed the competition's races counted, by points; needs races counted to be set).
+Report gives a short text summary of the competition.
 """
 
 from __future__ import annotations
 
+import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
@@ -15,12 +19,14 @@ from typing import Callable
 from ..model.limits import MAX_RACE_DAYS
 from ..model.member_list import MemberList
 from ..model.race_day import RaceDay, default_races
-from ..services.scoring import competition_results
+from ..services.report import competition_summary, summary_text
+from ..services.scoring import competition_results, current_results, final_results
 from ..services.session import CompetitionSession
 from ..storage.errors import StorageError
 from ..storage.member_store import load_members
 from ..storage.settings_store import Settings
 from .race_day_window import RaceDayWindow
+from .report_window import ReportWindow
 from .results_window import ResultsWindow
 
 
@@ -53,8 +59,14 @@ class CompetitionWindow(tk.Toplevel):
         header = ttk.Frame(self, padding=(12, 10, 12, 4))
         header.pack(fill="x")
         ttk.Button(header, text="Close", command=self.close).pack(side="right", padx=(4, 0))
-        self.results_button = ttk.Button(header, text="Generate results", command=self.show_results)
+        self.results_button = ttk.Menubutton(header, text="Results")
+        self.results_menu = tk.Menu(self.results_button, tearoff=False)
+        self.results_menu.add_command(label="Current results (average points per race)",
+                                      command=lambda: self.show_results(final=False))
+        self.results_menu.add_command(label="Final results", command=lambda: self.show_results(final=True))
+        self.results_button["menu"] = self.results_menu
         self.results_button.pack(side="right", padx=(4, 0))
+        ttk.Button(header, text="Report", command=self.show_report).pack(side="right", padx=(4, 0))
         self.title_var = tk.StringVar()
         self.path_var = tk.StringVar()
         ttk.Label(header, textvariable=self.title_var, font=("TkDefaultFont", 16, "bold")).pack(anchor="w")
@@ -70,7 +82,7 @@ class CompetitionWindow(tk.Toplevel):
         # Left: the list of race days
         self.days_frame = ttk.LabelFrame(body, text="Race days", padding=8)
         self.days_frame.pack(side="left", fill="y")
-        self.listbox = tk.Listbox(self.days_frame, height=MAX_RACE_DAYS, width=26,
+        self.listbox = tk.Listbox(self.days_frame, height=MAX_RACE_DAYS, width=32,
                                   exportselection=False, activestyle="none")
         self.listbox.pack(fill="y", expand=True)
         self.listbox.bind("<<ListboxSelect>>", lambda e: self._selection_changed())
@@ -113,7 +125,7 @@ class CompetitionWindow(tk.Toplevel):
         self.path_var.set(f"{', '.join(session.class_names)} · {clubs} · {counted}\n{session.path}")
         self.days_frame.configure(text=f"Race days ({len(days)} of {MAX_RACE_DAYS})")
         for day in days:
-            self.listbox.insert(tk.END, day.name)
+            self.listbox.insert(tk.END, day.label)
         if days and select is not None:
             index = min(max(select, 0), len(days) - 1)
             self.listbox.selection_set(index)
@@ -127,6 +139,11 @@ class CompetitionWindow(tk.Toplevel):
         index = self._selected_index()
         self.new_button.state(["disabled" if session.competition.is_full else "!disabled"])
         self.results_button.state(["!disabled" if session.competition.race_days else "disabled"])
+        count = session.competition.race_count
+        self.results_menu.entryconfigure(
+            1, label=(f"Final results (boats with {count} races or more)" if count
+                      else "Final results (set Races counted with Edit first)"),
+            state="normal" if count else "disabled")
         for button in (self.edit_button, self.delete_button):
             button.state(["!disabled" if index is not None else "disabled"])
         if not session.competition.race_days:
@@ -154,7 +171,7 @@ class CompetitionWindow(tk.Toplevel):
             tree.column(column_id, width=110, anchor="w")
         for number, row in enumerate(day.rows, start=1):
             tree.insert("", "end", values=[number, *row])
-        self.preview_frame.configure(text=f"{day.name} ({', '.join(self.session.class_names)})")
+        self.preview_frame.configure(text=f"{day.label} · {', '.join(self.session.class_names)}")
 
     # -- race days --------------------------------------------------------------------------
 
@@ -168,7 +185,8 @@ class CompetitionWindow(tk.Toplevel):
         members = self._load_members()
         if members is None:
             return
-        draft = RaceDay(competition.next_race_day_name(), default_races(self.settings.default_columns))
+        draft = RaceDay(competition.next_race_day_name(), default_races(self.settings.default_columns),
+                        datetime.date.today())
         day = RaceDayWindow(self, draft, title=f"{competition.title} - new race day",
                             default_rows=self.settings.default_rows, members=members,
                             **self._race_day_options()).show()
@@ -199,15 +217,27 @@ class CompetitionWindow(tk.Toplevel):
                 self._refresh(select=index)
         return "break"
 
-    def show_results(self) -> None:
-        """Open a window with every competitor's races and points over all race days so far."""
+    def show_results(self, final: bool) -> None:
+        """Open a window with the current or the final results over all race days so far."""
+        competition = self.session.competition
+        results = final_results(self._results()) if final else current_results(self._results())
+        ResultsWindow(self, results, competition.title,
+                      html_folder=self.settings.output_dir / competition.directory,
+                      club_title=self.settings.title)
+
+    def show_report(self) -> None:
+        """Open a window with a text summary: race days, races, competitors and the leaders."""
+        competition = self.session.competition
+        summary = competition_summary(competition, self._results(), self.session.class_names)
+        ReportWindow(self, summary_text(summary), competition.title,
+                     folder=self.settings.output_dir / competition.directory)
+
+    def _results(self):
         try:
             members = load_members(self.settings.data_dir)
         except StorageError:
-            members = None                 # still show the results, just without names
-        competition = self.session.competition
-        results = competition_results(competition, members, self.session.class_names)
-        ResultsWindow(self, results, competition.title)
+            members = None                 # still work out the results, just without names
+        return competition_results(self.session.competition, members, self.session.class_names)
 
     def _race_day_options(self) -> dict:
         """The competition's classes and clubs, and where the race day window's Export HTML writes."""

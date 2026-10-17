@@ -1,6 +1,8 @@
-"""race_day.py - one day's racing: a name and up to MAX_RACES races.
+"""race_day.py - one day's racing: a name, a date and up to MAX_RACES races.
 
 Every race day is open to all of its competition's classes: a sailor in any of them may race.
+The date may be unknown (None), as it is for race days entered before dates were kept. On
+screen dates are day/month/year: parse_date() reads what is typed and format_date() shows it.
 
 On screen and in the file a race day is a table: one column per race, one row per finishing
 place. columns, rows and from_table() give that view of the races.
@@ -8,31 +10,61 @@ place. columns, rows and from_table() give that view of the races.
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass, field
 
 from .limits import DEFAULT_RACES, MAX_PLACES, MAX_RACES
 from .race import Race, race_name
 
 
+DATE_FORMAT = "%d/%m/%Y"                 # 10/10/2026
+_DATE_FORMATS = (DATE_FORMAT, "%d-%m-%Y", "%d.%m.%Y", "%Y-%m-%d", "%d/%m/%y", "%d-%m-%y")
+
+
 def default_races(count: int = DEFAULT_RACES) -> list[Race]:
     return [Race(race_name(i)) for i in range(1, count + 1)]
+
+
+def parse_date(text: str) -> datetime.date | None:
+    """'10/10/2026', '10-10-26' or '2026-10-10' -> a date; blank -> None. Raises ValueError."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    for date_format in _DATE_FORMATS:
+        try:
+            return datetime.datetime.strptime(text, date_format).date()
+        except ValueError:
+            pass
+    raise ValueError(f"'{text}' is not a date. Type it as day/month/year, for example 10/10/2026.")
+
+
+def format_date(date: datetime.date | None) -> str:
+    return date.strftime(DATE_FORMAT) if date else ""
 
 
 @dataclass
 class RaceDay:
     name: str
     races: list[Race] = field(default_factory=default_races)
+    date: datetime.date | None = None        # None: not known
 
     def __post_init__(self):
         self.name = (self.name or "").strip()
         if not self.name:
             raise ValueError("A race day needs a name.")
+        if self.date is not None and not isinstance(self.date, datetime.date):
+            raise ValueError("A race day's date must be a date.")
         self.set_races(self.races)
 
+    @property
+    def label(self) -> str:
+        """The name and date, for lists and headings: 'Race day 1 (10/10/2026)'."""
+        return f"{self.name} ({format_date(self.date)})" if self.date else self.name
+
     @classmethod
-    def from_table(cls, name: str, columns, rows) -> RaceDay:
+    def from_table(cls, name: str, columns, rows, date: datetime.date | None = None) -> RaceDay:
         """A race day from a table: column names, and rows of cells (row 1 = 1st place)."""
-        day = cls(name)
+        day = cls(name, date=date)
         day.set_table(columns, rows)
         return day
 

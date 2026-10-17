@@ -4,7 +4,8 @@ from app.model.competition import Competition
 from app.model.member_list import MemberList
 from app.model.race_day import RaceDay
 from app.model.sailor import Sailor
-from app.services.scoring import competition_results
+from app.model.results import CURRENT, FINAL
+from app.services.scoring import competition_results, current_results, final_results
 
 ANN = Sailor("   12", "DF95", "Ann", "Smith", "RMBC")
 BOB = Sailor("   07", "DF95", "Bob", "Jones", "RMBC")
@@ -94,6 +95,23 @@ class CompetitionResultsTests(unittest.TestCase):
         vic = Sailor("   12", "VICTORIA", "Vic", "Toria", "RMBC")
         results = competition_results(comp, MemberList([vic]), classes=["Victoria"])
         self.assertEqual([(r.boat_class, r.name) for r in results.competitors], [("Victoria", "Vic Toria")])
+
+    def test_current_results_rank_by_average(self):
+        # 12: 1st and 3rd (average 2); 7: 2nd only (average 2, fewer races); 3: 1st only
+        day1 = day("Race day 1", ["A", "B"], [["12", "3"], ["7", ""], ["", "12"]])
+        results = current_results(competition_results(competition(day1), MEMBERS))
+        self.assertEqual(results.table, CURRENT)
+        self.assertEqual([(r.sail_number, r.races, float(r.average)) for r in results.competitors],
+                         [("3", 1, 1.0), ("12", 2, 2.0), ("07", 1, 2.0)])
+        self.assertEqual(results.places(), [1, 2, 2])
+
+    def test_final_results_only_boats_with_enough_races(self):
+        day1 = day("Race day 1", ["A", "B", "C"], [["12", "7", "12"], ["7", "12", ""], ["3", "", ""]])
+        results = final_results(competition_results(competition(day1, race_count=2), MEMBERS))
+        self.assertEqual(results.table, FINAL)
+        self.assertEqual([(r.sail_number, r.races, r.points) for r in results.competitors],
+                         [("12", 3, 2), ("07", 2, 3)])               # 3 sailed once: left out
+        self.assertEqual(results.left_out, 1)
 
     def test_no_race_days(self):
         results = competition_results(competition(), MEMBERS)

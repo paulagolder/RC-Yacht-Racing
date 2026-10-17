@@ -1,8 +1,9 @@
+import datetime
 import unittest
 
 from app.model.limits import MAX_PLACES, MAX_RACES
 from app.model.race import Race
-from app.model.race_day import RaceDay, default_races
+from app.model.race_day import RaceDay, default_races, format_date, parse_date
 
 
 class RaceDayTests(unittest.TestCase):
@@ -75,6 +76,28 @@ class RaceDayTests(unittest.TestCase):
         day = RaceDay("d", [race])
         race.finishers.append("2")
         self.assertEqual(day.rows, [["1"]])
+
+
+
+class DateTests(unittest.TestCase):
+    def test_parse_date(self):
+        oct10 = datetime.date(2026, 10, 10)
+        for text in ("10/10/2026", " 10-10-2026 ", "10.10.2026", "2026-10-10", "10/10/26"):
+            self.assertEqual(parse_date(text), oct10, text)
+        self.assertEqual(parse_date("3/7/2026"), datetime.date(2026, 7, 3))   # day first
+        self.assertIsNone(parse_date(" "))
+        for bad in ("31/02/2026", "next Sunday", "2026/13/01"):
+            with self.assertRaises(ValueError):
+                parse_date(bad)
+
+    def test_format_and_label(self):
+        day = RaceDay("Race day 1", date=datetime.date(2026, 7, 3))
+        self.assertEqual(format_date(day.date), "03/07/2026")
+        self.assertEqual(day.label, "Race day 1 (03/07/2026)")
+        self.assertEqual(RaceDay("Spring open").label, "Spring open")
+        self.assertEqual(format_date(None), "")
+        with self.assertRaises(ValueError):
+            RaceDay("d", date="2026-07-03")
 
 
 if __name__ == "__main__":

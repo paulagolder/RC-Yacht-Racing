@@ -5,6 +5,12 @@ A boat's points are the sum of its best competition.race_count races (all of the
 competition does not say), over every race day. A boat's class is the class of the club
 sailor with that sail number in one of the competition's classes (the first one, if several),
 or blank if there is none.
+
+competition_results gives every boat, ranked by points. From it:
+
+    current_results(results)   every boat, by average points per race (fewest first; on equal
+                               averages, the boat with more races first)
+    final_results(results)     only boats with at least race_count races, by their points
 """
 
 from __future__ import annotations
@@ -13,7 +19,7 @@ from ..model.boat_class import class_key
 from ..model.competition import Competition
 from ..model.member_list import MemberList
 from ..model.race import Race
-from ..model.results import CompetitorResult, Results
+from ..model.results import CURRENT, FINAL, CompetitorResult, Results
 from ..model.sail_number import sail_key, sort_key
 
 
@@ -46,7 +52,24 @@ def competition_results(competition: Competition, members: MemberList | None = N
         result.points = sum(sorted(result.race_points)[:competition.race_count])
     competitors = sorted(found.values(), key=lambda r: (r.points, class_key(r.boat_class),
                                                         sort_key(r.sail_number)))
-    return Results([day.name for day in days], competition.race_count, competitors)
+    return Results([day.label for day in days], competition.race_count, competitors)
+
+
+def current_results(results: Results) -> Results:
+    """Every boat, ranked by its average points per race sailed."""
+    competitors = sorted(results.competitors, key=lambda r: (r.average, -r.races,
+                                                             class_key(r.boat_class),
+                                                             sort_key(r.sail_number)))
+    return Results(results.day_names, results.race_count, competitors, CURRENT)
+
+
+def final_results(results: Results) -> Results:
+    """Only the boats that have sailed the qualifying number of races (race_count; with no
+    race_count every boat qualifies), ranked by their points as in results."""
+    needed = results.race_count or 0
+    competitors = [r for r in results.competitors if r.races >= needed]
+    return Results(results.day_names, results.race_count, competitors, FINAL,
+                   left_out=len(results.competitors) - len(competitors))
 
 
 def _class_name(boat_class: str, classes: list[str]) -> str:

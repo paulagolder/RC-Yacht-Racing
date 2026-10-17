@@ -4,7 +4,8 @@ Enter and edit race results for radio-controlled model sailing yachts.
 
 - A **competition** has a name, a year, one or more boat classes and the clubs whose sailors may race,
   and lives in one XML file. It holds up to **15 race days**.
-- A **race day** is a small table: up to **6 races (columns, Race A, Race B ...) and 15 rows**.
+- A **race day** has a name and a date (typed as day/month/year, today's date for a new one) and is a
+  small table: up to **6 races (columns, Race A, Race B ...) and 15 rows**.
 - A competition's classes are typed as a list separated by commas ("DF65, Victoria"); each must be
   one of the classes in `yachtclasses.xml`, typed by its key or full name in any case. They are
   stored as class ids without repeats (`classes="df65,victoria"`).
@@ -42,20 +43,35 @@ on Debian/Ubuntu install `python3-tk`). Nothing else to install.
 
 ## Results so far
 
-In a competition's window, **Generate results** opens a table with one row per boat (a sail number
-in a class: the same number in two classes is two boats): its points on each race day, how many
-races it has sailed and its points. A finish earns its place in points (row 1 = 1st = 1 point, row
-2 = 2 points ...). If the competition has **races counted** (`racecount`), only each boat's best
-that many races count, and the points from every race are shown too. The table starts with the
-fewest points first. Click a column heading to sort by it; click it again to reverse.
+In a competition's window, the **Results** button offers two tables. Each has one row per boat (a
+sail number in a class: the same number in two classes is two boats), with its place, its points on
+each race day and how many races it has sailed. A finish earns its place in points (row 1 = 1st =
+1 point, row 2 = 2 points ...), so fewer is better, and equal scores share a place.
+
+- **Current results**: every boat, ranked by its average points per race sailed, however many
+  races it has sailed. Useful during the season, when not everyone can make every race day.
+- **Final results**: only the boats that have sailed the competition's **races counted**
+  (`racecount`) or more, ranked by the points from their best that many races. It needs races
+  counted to be set (Edit in the competitions list).
+
+Click a column heading to sort by it; click it again to reverse.
+
+**Report** gives a short text summary: the number of race days, races sailed and finishes, how many
+different boats have taken part (in each class), how many have qualified for the final results,
+each race day's figures and the leading boats in the current results.
+**Save...** writes it to a text file and **Copy** puts it on the clipboard.
 
 ## Web pages of the results
 
 In the race day window, **Export HTML** writes the table as a web page, with each sailor's name under
 their sail number. It goes in `output_folder` (see properties.xml), in the competition's HTML folder
 (`directory`), for example `~/Documents/raceresult_output/Victoria2026/Race_day_1.html`. Exporting
-the same race day again replaces its page. The page is a single file (logo included), ready to email,
-upload or print.
+the same race day again replaces its page.
+
+In a results window, **Export HTML** writes that table as `results_current.html` or
+`results_final.html` in the same folder.
+
+Each page is a single file (logo included), ready to email, upload or print.
 
 ## Making a Linux program file
 
@@ -80,11 +96,12 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             boat_class.py       boat classes, and matching them ("DF 95" = "DF95")
             sail_number.py      matching, sorting and writing sail numbers ("1" = "01")
             race.py             Race: its name and finishers in order (place = points)
-            race_day.py         RaceDay: a name and its races, also seen as a table
+            race_day.py         RaceDay: a name, a date and its races, also seen as a table
             competition.py      Competition: name, year, classes, clubs, races counted, race days
             sailor.py           Sailor: one club boat
             member_list.py      MemberList: the club sailors, and checking race results against them
-            results.py          Results: each competitor's races and points
+            results.py          Results: each competitor's races and points; the current and final tables
+            summary.py          CompetitionSummary: the figures for the report
         storage/                reading and writing files
             errors.py           StorageError, with a message that can be shown to the user
             xml_file.py         writes a file safely, keeping a .bak
@@ -93,15 +110,19 @@ there are 15, then moving to the top of the next column); **Shift+Tab** or **Up*
             settings_store.py   Settings: the data folder and properties.xml
         services/               working with the model (no screen)
             session.py          an open file: every change is saved at once, and undone if saving fails
-            scoring.py          works out the results over all race days
-            html_export.py      a race day as a web page
+            scoring.py          works out the results over all race days, and the current and final tables
+            results_table.py    the columns and scoring note shared by the results window and page
+            html_export.py      a race day, or the results, as a web page
+            report.py           the text summary of a competition (Report)
         ui/                     the windows
             front_window.py     the first window: the list of competitions
             competition_dialog.py  asks for a competition's details (New and Edit)
             competition_window.py  one competition: its race days and a preview
             race_day_window.py  enter or edit one race day's table
             grid_navigation.py  where Enter/Tab moves to in that table
-            results_window.py   the results (Generate results in a competition's window)
+            results_window.py   the current or final results (Results in a competition's window)
+            report_window.py    the text summary (Report in a competition's window)
+            browser.py          opens an exported page in the web browser
             sailors_window.py   the Club sailors window
         resources/              club_logo.svg (the original) and club_logo.png (made from it by build_linux.sh)
     tests/                      the same layout as app/: python -m unittest discover -s tests -t .
@@ -114,7 +135,7 @@ needing a screen. To change a limit (races, rows, race days), edit `app/model/li
 
     <competition year="2026" name="Victoria_df65_competition_2026" racecount="24" clubs="RMBC"
                  directory="Victoria2026" classes="df65,victoria" version="3">
-      <raceday name="Race day 1" class="df65">
+      <raceday name="Race day 1" date="2026-10-10">
         <race name="Race A">
           <sail>12</sail>
           <sail>7</sail>
@@ -126,8 +147,8 @@ needing a screen. To change a limit (races, rows, race days), edit `app/model/li
 A competition holds race days, a race day holds races, and a race holds sail numbers in
 finishing order (the first `<sail>` came 1st). An empty `<sail />` is a place left empty.
 `classes` and `clubs` are lists separated by commas; `racecount` and `clubs` may be left out
-(every race counts; any club). A race day's `class` must be one of the competition's classes;
-a race day without one is open to all of them.
+(every race counts; any club). `classes` are the class ids from `yachtclasses.xml`, and every
+race day is open to all of them. A race day's `date` is year-month-day and may be left out.
 
 Older files still open and are saved in this layout the next time they change. Versions 1 and 2
 have a single `class="DF95"` and no name (the name becomes "DF95 2026"); version 1 stores each race

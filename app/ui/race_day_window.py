@@ -16,21 +16,17 @@ save until they are fixed.
 from __future__ import annotations
 
 import csv
-import os
-import shutil
-import subprocess
-import sys
 import tkinter as tk
-import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from ..model.limits import DEFAULT_ROWS, MAX_PLACES, MAX_RACES
 from ..model.member_list import MemberList, Problem
 from ..model.race import Race, race_name
-from ..model.race_day import RaceDay
+from ..model.race_day import RaceDay, format_date, parse_date
 from ..services.html_export import export_race_day_html
 from ..storage.errors import StorageError
+from .browser import open_in_browser
 from .grid_navigation import next_cell_position, previous_cell_position
 
 BOLD = ("TkDefaultFont", 10, "bold")
@@ -67,13 +63,18 @@ class RaceDayWindow(tk.Toplevel):
         self.columns: list[str] = list(race_day.columns)    # race names
         self.cells: list[list[ttk.Entry]] = []     # cells[row][column]
 
-        # Race day name
+        # Race day name and date
         top = ttk.Frame(self, padding=(12, 12, 12, 0))
         top.grid(row=0, column=0, sticky="w")
         ttk.Label(top, text="Race day name:").pack(side="left")
         self.name_var = tk.StringVar(value=race_day.name)
-        self.name_entry = ttk.Entry(top, textvariable=self.name_var, width=28)
+        self.name_entry = ttk.Entry(top, textvariable=self.name_var, width=24)
         self.name_entry.pack(side="left", padx=6)
+        ttk.Label(top, text="Date:").pack(side="left", padx=(12, 0))
+        self.date_var = tk.StringVar(value=format_date(race_day.date))
+        self.date_entry = ttk.Entry(top, textvariable=self.date_var, width=11)
+        self.date_entry.pack(side="left", padx=6)
+        ttk.Label(top, text="dd/mm/yyyy", foreground="gray40").pack(side="left")
         if self.classes:
             ttk.Label(top, text="Classes:").pack(side="left", padx=(12, 0))
             ttk.Label(top, text=", ".join(self.classes), font=BOLD).pack(side="left", padx=6)
@@ -208,16 +209,22 @@ class RaceDayWindow(tk.Toplevel):
                 for c, name in enumerate(self.columns)]
 
     def _race_day(self, title: str) -> RaceDay | None:
-        """The race day as entered, or None (after saying why) if it has no name."""
+        """The race day as entered, or None (after saying why) if its name or date is wrong."""
         try:
-            return RaceDay(self.name_var.get(), self._races())
+            date = parse_date(self.date_var.get())
+        except ValueError as exc:
+            messagebox.showwarning(title, str(exc), parent=self)
+            self.date_entry.focus_set()
+            return None
+        try:
+            return RaceDay(self.name_var.get(), self._races(), date)
         except ValueError as exc:
             messagebox.showwarning(title, str(exc), parent=self)
             self.name_entry.focus_set()
             return None
 
     def _snapshot(self) -> tuple:
-        return (self.name_var.get(), list(self.columns),
+        return (self.name_var.get(), self.date_var.get(), list(self.columns),
                 _without_trailing_blank_rows(self._values()))
 
     # -- checking sail numbers -------------------------------------------------------------
@@ -317,7 +324,7 @@ class RaceDayWindow(tk.Toplevel):
             return
         if messagebox.askyesno("Export HTML", f"Saved to\n{path}\n\nOpen it in your web browser?",
                                parent=self):
-            _open_in_browser(path)
+            open_in_browser(path)
 
     # -- showing it -------------------------------------------------------------------------
 
@@ -330,22 +337,3 @@ class RaceDayWindow(tk.Toplevel):
         self._focus_cell(0, 0)
         self.wait_window(self)
         return self.result
-
-
-def _open_in_browser(path: Path) -> None:
-    """Show a file in the web browser.
-
-    The packaged program (PyInstaller) points LD_LIBRARY_PATH at its own libraries, which can
-    stop the browser from starting, so on Linux the original setting is put back first.
-    """
-    opener = shutil.which("xdg-open") if sys.platform.startswith("linux") else None
-    if opener is None:
-        webbrowser.open(path.as_uri())
-        return
-    env = dict(os.environ)
-    if "LD_LIBRARY_PATH_ORIG" in env:
-        env["LD_LIBRARY_PATH"] = env["LD_LIBRARY_PATH_ORIG"]
-    elif getattr(sys, "frozen", False):
-        env.pop("LD_LIBRARY_PATH", None)
-    subprocess.Popen([opener, str(path)], env=env, stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL, start_new_session=True)
